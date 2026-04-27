@@ -51,5 +51,13 @@ export default [
       },
     },
   },
+  {
+    files: ['scripts/**/*.{js,mjs,cjs}', '*.config.{js,mjs,cjs}'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: { ...globals.node },
+    },
+  },
   prettier,
 ];

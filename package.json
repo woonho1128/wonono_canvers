@@ -15,7 +15,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
-    "check": "npm run typecheck && npm run lint && npm run test"
+    "check": "npm run typecheck && npm run lint && npm run test",
+    "seed:outlines": "node --env-file=.env.local scripts/seed-outlines.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.104.1",

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" width="800" height="800">
+  <rect width="800" height="800" fill="#ffffff"/>
+  <g fill="none" stroke="#000000" stroke-width="10" stroke-linecap="round" stroke-linejoin="round">
+    <!-- 사과 본체 (왼쪽 봉우리 + 오른쪽 봉우리) -->
+    <path d="
+      M 400 280
+      C 280 200, 160 280, 160 460
+      C 160 620, 280 720, 400 700
+      C 520 720, 640 620, 640 460
+      C 640 280, 520 200, 400 280
+      Z
+    "/>
+    <!-- 위쪽 살짝 들어간 부분 (봉우리 사이 곡선) -->
+    <path d="M 320 290 Q 400 340 480 290"/>
+    <!-- 줄기 -->
+    <path d="M 400 280 Q 410 220 440 200"/>
+    <!-- 잎 -->
+    <path d="
+      M 440 200
+      Q 520 160 580 200
+      Q 540 260 460 240
+      Z
+    "/>
+    <!-- 잎 가운데 잎맥 -->
+    <path d="M 460 230 Q 510 215 565 205"/>
+  </g>
+</svg>

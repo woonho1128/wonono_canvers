@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" width="800" height="800">
+  <rect width="800" height="800" fill="#ffffff"/>
+  <g fill="none" stroke="#000000" stroke-width="10" stroke-linecap="round" stroke-linejoin="round">
+    <!-- 풍선 본체 (타원) -->
+    <ellipse cx="400" cy="320" rx="200" ry="240"/>
+    <!-- 풍선 매듭 (본체 아래 작은 삼각형) -->
+    <path d="
+      M 380 558
+      L 360 600
+      L 440 600
+      L 420 558
+      Z
+    "/>
+    <!-- 풍선 줄 (구불구불) -->
+    <path d="
+      M 400 600
+      Q 360 660 420 700
+      Q 470 740 380 760
+    "/>
+    <!-- 풍선 위쪽 하이라이트 -->
+    <path d="
+      M 320 200
+      Q 290 240 305 290
+    "/>
+  </g>
+</svg>
