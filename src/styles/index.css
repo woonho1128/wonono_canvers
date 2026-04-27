@@ -1,17 +1,47 @@
-:root {
-  font-family: system-ui, 'Pretendard', sans-serif;
-  background: #FFF8E7;
-  color: #3D3D3D;
+@import 'pretendard/dist/web/variable/pretendardvariable.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  html,
+  body,
+  #root {
+    @apply h-full m-0;
+  }
+
+  body {
+    @apply bg-app-bg text-app-text font-sans;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none;
+    user-select: none;
+    overscroll-behavior: none;
+  }
+
+  /* 캔버스: 스크롤·줌·길게눌러 메뉴 모두 차단 (6.1.2) */
+  canvas {
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  /* 5세 — 텍스트 선택 메뉴 안 뜨게 */
+  button,
+  [role='button'] {
+    -webkit-touch-callout: none;
+  }
 }
 
-html, body, #root {
-  height: 100%;
-  margin: 0;
-}
-
-body {
-  -webkit-tap-highlight-color: transparent;
-  -webkit-user-select: none;
-  user-select: none;
-  overscroll-behavior: none;
+@layer components {
+  .kid-btn {
+    @apply rounded-3xl font-bold text-kid-btn shadow-md
+           active:scale-95 transition-transform duration-100
+           min-w-touch-lg min-h-touch-lg;
+  }
 }
