@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" fill="#FFF8E7"/>
+  <circle cx="256" cy="256" r="180" fill="#FF9F43"/>
+  <text x="256" y="300" font-family="system-ui, sans-serif" font-size="220" font-weight="800"
+        text-anchor="middle" fill="#FFF8E7">🎨</text>
+</svg>
