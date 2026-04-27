@@ -19,15 +19,27 @@ declare const cv: any;
 
 let cvReadyPromise: Promise<void> | null = null;
 
+const OPENCV_SCRIPT_URLS = ['/cv/opencv.js', 'https://docs.opencv.org/4.10.0/opencv.js'];
+
 function loadCV(): Promise<void> {
   if (cvReadyPromise) return cvReadyPromise;
   cvReadyPromise = new Promise<void>((resolve, reject) => {
-    try {
-      importScripts('/cv/opencv.js');
-    } catch (err) {
-      reject(err);
+    let lastError: unknown = null;
+    for (const url of OPENCV_SCRIPT_URLS) {
+      try {
+        importScripts(url);
+        lastError = null;
+        break;
+      } catch (err) {
+        lastError = err;
+      }
+    }
+
+    if (lastError) {
+      reject(lastError);
       return;
     }
+
     const g = self as unknown as { cv?: { Mat?: unknown; onRuntimeInitialized?: () => void } };
     if (g.cv?.Mat) {
       resolve();
