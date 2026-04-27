@@ -35,6 +35,7 @@ export function HoldToConfirm({
   const [progress, setProgress] = useState(0); // 0..1
   const rafRef = useRef<number | null>(null);
   const startedAtRef = useRef<number | null>(null);
+  const confirmedRef = useRef(false);
 
   const stop = useCallback(() => {
     if (rafRef.current !== null) {
@@ -60,6 +61,7 @@ export function HoldToConfirm({
         startedAtRef.current = null;
         rafRef.current = null;
         setProgress(0);
+        confirmedRef.current = true;
         onConfirm();
         return;
       }
@@ -84,6 +86,14 @@ export function HoldToConfirm({
       onPointerUp={stop}
       onPointerCancel={stop}
       onPointerLeave={stop}
+      onClick={() => {
+        if (disabled) return;
+        if (confirmedRef.current) {
+          confirmedRef.current = false;
+          return;
+        }
+        onConfirm();
+      }}
       className={clsx(
         'relative shrink-0 w-touch-lg h-touch-lg rounded-2xl overflow-hidden',
         'flex items-center justify-center text-3xl select-none',

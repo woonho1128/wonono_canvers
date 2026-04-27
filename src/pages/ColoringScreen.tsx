@@ -17,6 +17,7 @@ import { publicUrl, uploadBlob } from '@/supabase/storage';
 import { getCachedPage, putCachedPage } from '@/db/pagesCache';
 import { deleteDraft, loadDraft, saveDraft } from '@/db/drafts';
 import { play, primeAudio } from '@/audio/soundEffects';
+import { createId } from '@/utils/id';
 import type { ColoringPage } from '@/supabase/types';
 
 const AUTOSAVE_DEBOUNCE_MS = 500;
@@ -241,9 +242,11 @@ function Workspace({ page }: { page: ColoringPage }) {
 
   // 처음부터 다시
   const onReset = useCallback(() => {
+    primeAudio();
     engineRef.current?.resetPaint();
     void deleteDraft(page.id).catch(() => {});
     strokeCountRef.current = 0;
+    setSaveState('idle');
     play('reset');
   }, [page.id]);
 
@@ -255,7 +258,7 @@ function Workspace({ page }: { page: ColoringPage }) {
     setSaveState('saving');
     try {
       const blob = await engine.exportComposite();
-      const fileName = `${crypto.randomUUID()}.png`;
+      const fileName = `${createId()}.png`;
       await uploadBlob('artworks', fileName, blob);
       await insertArtwork(page.id, fileName, null);
       await deleteDraft(page.id).catch(() => {});

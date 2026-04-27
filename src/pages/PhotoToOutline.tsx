@@ -13,6 +13,7 @@ import {
 import { listCategories } from '@/supabase/categories';
 import { insertUserPage } from '@/supabase/pages';
 import { uploadBlob } from '@/supabase/storage';
+import { createId } from '@/utils/id';
 import type { Category } from '@/supabase/types';
 
 type Step =
@@ -146,7 +147,7 @@ async function save(
 ): Promise<void> {
   setStep({ kind: 'saving' });
   try {
-    const fileName = `user/${crypto.randomUUID()}.png`;
+    const fileName = `user/${createId()}.png`;
     await uploadBlob('outlines', fileName, step.outline);
     await insertUserPage(fileName, null, title || null, categoryId);
     URL.revokeObjectURL(step.photoObjectUrl);
@@ -389,4 +390,3 @@ function SavingStep() {
     </div>
   );
 }
-

@@ -8,6 +8,8 @@
  * UI에서 "별로예요" 폐기 흐름 필수.
  */
 
+import { createId } from '@/utils/id';
+
 let workerInstance: Worker | null = null;
 let workerReady = false;
 const readyListeners = new Set<() => void>();
@@ -54,7 +56,7 @@ export async function convertPhotoToOutline(
   detail: number = 100,
 ): Promise<Blob> {
   const bitmap = source instanceof ImageBitmap ? source : await createImageBitmap(source);
-  const id = crypto.randomUUID();
+  const id = createId();
   const worker = getWorker();
 
   return new Promise<Blob>((resolve, reject) => {
