@@ -1,29 +1,43 @@
-const PAINT_SWATCHES = [
-  { name: 'red', cls: 'bg-paint-red' },
-  { name: 'orange', cls: 'bg-paint-orange' },
-  { name: 'yellow', cls: 'bg-paint-yellow' },
-  { name: 'lime', cls: 'bg-paint-lime' },
-  { name: 'green', cls: 'bg-paint-green' },
-  { name: 'sky', cls: 'bg-paint-sky' },
-  { name: 'blue', cls: 'bg-paint-blue' },
-  { name: 'purple', cls: 'bg-paint-purple' },
-  { name: 'pink', cls: 'bg-paint-pink' },
-  { name: 'brown', cls: 'bg-paint-brown' },
-  { name: 'gray', cls: 'bg-paint-gray' },
-  { name: 'black', cls: 'bg-paint-black' },
-] as const;
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { ErrorBoundary } from 'react-error-boundary';
+import Home from './pages/Home';
+import CategorySelect from './pages/CategorySelect';
+import PageGrid from './pages/PageGrid';
+import ColoringScreen from './pages/ColoringScreen';
+import Gallery from './pages/Gallery';
+import ParentGate from './pages/ParentGate';
+import ParentDashboard from './pages/ParentDashboard';
+import PhotoToOutline from './pages/PhotoToOutline';
+
+function ErrorFallback({ resetErrorBoundary }: { resetErrorBoundary: () => void }) {
+  return (
+    <div className="min-h-full p-6 grid place-items-center text-center">
+      <div>
+        <div className="text-6xl">😢</div>
+        <p className="text-kid-title mt-4">앗, 무언가 잘못됐어요</p>
+        <button onClick={resetErrorBoundary} className="kid-btn bg-app-orange text-white px-6 mt-6">
+          다시 시도
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export default function App() {
   return (
-    <div className="min-h-full p-6 bg-app-bg text-app-text">
-      <h1 className="text-kid-title">조카 색칠놀이</h1>
-      <p className="text-kid-body mt-2">스캐폴딩 OK. 다음 단계에서 라우팅과 홈 화면을 붙입니다.</p>
-
-      <div className="mt-6 grid grid-cols-6 gap-2 max-w-md">
-        {PAINT_SWATCHES.map((c) => (
-          <div key={c.name} className={`w-16 h-16 rounded-full ${c.cls}`} aria-label={c.name} />
-        ))}
-      </div>
-    </div>
+    <ErrorBoundary FallbackComponent={ErrorFallback}>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/categories" element={<CategorySelect />} />
+          <Route path="/categories/:categoryId" element={<PageGrid />} />
+          <Route path="/color/:pageId" element={<ColoringScreen />} />
+          <Route path="/gallery" element={<Gallery />} />
+          <Route path="/parent" element={<ParentGate />} />
+          <Route path="/parent/dashboard" element={<ParentDashboard />} />
+          <Route path="/parent/photo-to-outline" element={<PhotoToOutline />} />
+        </Routes>
+      </BrowserRouter>
+    </ErrorBoundary>
   );
 }
