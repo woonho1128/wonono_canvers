@@ -8,6 +8,7 @@ interface Props {
 
 const TOOLS: { id: Tool; label: string; emoji: string }[] = [
   { id: 'brush', label: '붓', emoji: '🖌️' },
+  { id: 'fill', label: '물통', emoji: '💧' },
   { id: 'eraser', label: '지우개', emoji: '🧹' },
 ];
 

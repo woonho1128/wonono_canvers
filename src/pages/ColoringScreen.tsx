@@ -1,5 +1,5 @@
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAsyncData } from '@/hooks/useAsyncData';
 import { AsyncBoundary } from '@/components/AsyncBoundary';
 import { ColorPalette } from '@/components/ColorPalette';
@@ -8,10 +8,12 @@ import { BrushSizePicker } from '@/components/BrushSizePicker';
 import { BRUSH_SIZES, type BrushSizeKey } from '@/components/brushSizes';
 import { ToolBar } from '@/components/ToolBar';
 import { CanvasEngine, type EngineState, type Tool } from '@/canvas/CanvasEngine';
-import { getCanvasPoint } from '@/canvas/pointer';
+import { PointerController } from '@/canvas/pointerController';
+import { useSettingsStore } from '@/store/settingsStore';
 import { getPageById } from '@/supabase/pages';
 import { insertArtwork } from '@/supabase/artworks';
 import { publicUrl, uploadBlob } from '@/supabase/storage';
+import { getCachedPage, putCachedPage } from '@/db/pagesCache';
 import type { ColoringPage } from '@/supabase/types';
 
 export default function ColoringScreen() {
@@ -39,6 +41,9 @@ function Workspace({ page }: { page: ColoringPage }) {
   const paintCanvasRef = useRef<HTMLCanvasElement>(null);
   const outlineCanvasRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef<CanvasEngine | null>(null);
+  const pointerRef = useRef<PointerController | null>(null);
+
+  const inputMode = useSettingsStore((s) => s.inputMode);
 
   const [tool, setTool] = useState<Tool>('brush');
   const [color, setColor] = useState<PaintColor>(PAINT_COLORS[0]);
@@ -50,7 +55,7 @@ function Workspace({ page }: { page: ColoringPage }) {
   });
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'error'>('idle');
 
-  // 엔진 셋업 + 외곽선 로드
+  // 엔진 셋업 + 외곽선/마스크 로드 + Pointer 컨트롤러 attach
   useEffect(() => {
     const container = containerRef.current;
     const paintCanvas = paintCanvasRef.current;
@@ -74,37 +79,80 @@ function Workspace({ page }: { page: ColoringPage }) {
 
     const unsubscribe = engine.subscribe(setEngineState);
 
+    // Pointer 컨트롤러 (Palm Rejection 포함)
+    const controller = new PointerController(paintCanvas, {
+      onStrokeStart: (p) => engine.strokeStart(p),
+      onStrokeMove: (p) => engine.strokeMove(p),
+      onStrokeEnd: () => engine.strokeEnd(),
+      onStrokeCancel: () => engine.strokeCancel(),
+    });
+    controller.setMode(inputMode);
+    pointerRef.current = controller;
+
+    // 외곽선 + 마스크 로드 (캐시 우선)
     let cancelled = false;
     let objectUrl: string | null = null;
-    const outlineUrl = publicUrl('outlines', page.outline_path);
 
-    // dev: HTTP 캐시 우회로 SVG 수정 즉시 반영
-    // prod: SW가 가로채 CacheFirst로 처리 (vite.config.ts runtimeCaching)
-    fetch(outlineUrl, import.meta.env.DEV ? { cache: 'reload' } : undefined)
-      .then((r) => r.blob())
-      .then((blob) => {
+    const loadOutline = async () => {
+      const outlineUrl = publicUrl('outlines', page.outline_path);
+
+      // 1) 캐시 조회
+      const cached = await getCachedPage(page.id).catch(() => undefined);
+      const sizeMatches =
+        cached && cached.width === engine.internalWidth && cached.height === engine.internalHeight;
+
+      if (cached && sizeMatches) {
+        objectUrl = URL.createObjectURL(cached.outlineBlob);
+        const img = await loadImage(objectUrl);
         if (cancelled) return;
-        objectUrl = URL.createObjectURL(blob);
-        const img = new Image();
-        img.onload = () => {
-          if (!cancelled) engine.drawOutline(img);
-          if (objectUrl) URL.revokeObjectURL(objectUrl);
-        };
-        img.src = objectUrl;
-      })
-      .catch((err) => console.error('outline fetch failed:', err));
+        engine.drawOutline(img);
+        engine.setOutlineMask({
+          bytes: new Uint8Array(cached.maskBytes),
+          width: cached.width,
+          height: cached.height,
+        });
+        return;
+      }
+
+      // 2) Storage에서 받기 + 마스크 빌드 + 캐시 저장
+      const res = await fetch(
+        outlineUrl,
+        import.meta.env.DEV ? { cache: 'reload' } : undefined,
+      );
+      const blob = await res.blob();
+      if (cancelled) return;
+      objectUrl = URL.createObjectURL(blob);
+      const img = await loadImage(objectUrl);
+      if (cancelled) return;
+
+      engine.drawOutline(img);
+      const mask = engine.buildAndSetMask(img);
+
+      // 캐시 저장 (실패해도 무시 — 다음 번에 재빌드)
+      void putCachedPage({
+        pageId: page.id,
+        outlineBlob: blob,
+        maskBytes: mask.bytes.buffer.slice(0) as ArrayBuffer,
+        width: mask.width,
+        height: mask.height,
+        cachedAt: Date.now(),
+      }).catch((err) => console.warn('mask cache failed:', err));
+    };
+
+    loadOutline().catch((err) => console.error('outline load failed:', err));
 
     return () => {
       cancelled = true;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
+      controller.destroy();
       unsubscribe();
       engineRef.current = null;
+      pointerRef.current = null;
     };
-    // page.id 한 번만 셋업. tool/color/brushSize 변경은 별도 effect로 동기화.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page.id]);
 
-  // 도구/색/굵기 변경 시 엔진에 반영
+  // 도구/색/굵기 변경 시 엔진 동기화
   useEffect(() => {
     engineRef.current?.setTool(tool);
   }, [tool]);
@@ -114,33 +162,10 @@ function Workspace({ page }: { page: ColoringPage }) {
   useEffect(() => {
     engineRef.current?.setBrushSize(BRUSH_SIZES[brushSize]);
   }, [brushSize]);
+  useEffect(() => {
+    pointerRef.current?.setMode(inputMode);
+  }, [inputMode]);
 
-  // Pointer 핸들러
-  const onPointerDown = useCallback((e: ReactPointerEvent<HTMLCanvasElement>) => {
-    const engine = engineRef.current;
-    if (!engine) return;
-    e.currentTarget.setPointerCapture(e.pointerId);
-    engine.strokeStart(getCanvasPoint(e));
-  }, []);
-
-  const onPointerMove = useCallback((e: ReactPointerEvent<HTMLCanvasElement>) => {
-    const engine = engineRef.current;
-    if (!engine) return;
-    engine.strokeMove(getCanvasPoint(e));
-  }, []);
-
-  const onPointerUp = useCallback((e: ReactPointerEvent<HTMLCanvasElement>) => {
-    engineRef.current?.strokeEnd();
-    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
-      e.currentTarget.releasePointerCapture(e.pointerId);
-    }
-  }, []);
-
-  const onPointerCancel = useCallback(() => {
-    engineRef.current?.strokeCancel();
-  }, []);
-
-  // 저장
   const onSave = useCallback(async () => {
     const engine = engineRef.current;
     if (!engine || saveState === 'saving') return;
@@ -178,10 +203,6 @@ function Workspace({ page }: { page: ColoringPage }) {
           <canvas
             ref={paintCanvasRef}
             className="absolute inset-0 w-full h-full rounded-2xl touch-none"
-            onPointerDown={onPointerDown}
-            onPointerMove={onPointerMove}
-            onPointerUp={onPointerUp}
-            onPointerCancel={onPointerCancel}
           />
           <canvas
             ref={outlineCanvasRef}
@@ -199,11 +220,18 @@ function Workspace({ page }: { page: ColoringPage }) {
         onBrushSizeChange={setBrushSize}
       />
 
-      {saveState === 'error' && (
-        <ErrorToast onClose={() => setSaveState('idle')} />
-      )}
+      {saveState === 'error' && <ErrorToast onClose={() => setSaveState('idle')} />}
     </>
   );
+}
+
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('image load failed'));
+    img.src = src;
+  });
 }
 
 interface HeaderProps {
@@ -219,7 +247,11 @@ interface HeaderProps {
 function Header({ canUndo, canRedo, canSave, saving, onUndo, onRedo, onSave }: HeaderProps) {
   return (
     <header className="h-touch-lg shrink-0 flex items-center px-3 gap-2 border-b border-black/10">
-      <Link to="/" className="kid-btn bg-white px-4 inline-flex items-center justify-center" aria-label="홈">
+      <Link
+        to="/"
+        className="kid-btn bg-white px-4 inline-flex items-center justify-center"
+        aria-label="홈"
+      >
         🏠
       </Link>
       <div className="flex-1" />
@@ -274,9 +306,9 @@ function Footer({
   return (
     <footer className="shrink-0 border-t border-black/10 bg-app-bg">
       <ColorPalette value={color.hex} onChange={onColorChange} />
-      <div className="h-touch-lg flex items-center gap-2 px-4">
+      <div className="h-touch-lg flex items-center gap-2 px-4 overflow-x-auto">
         <ToolBar value={tool} onChange={onToolChange} />
-        <div className="w-2" />
+        <div className="w-2 shrink-0" />
         <BrushSizePicker value={brushSize} onChange={onBrushSizeChange} color={color.hex} />
       </div>
     </footer>

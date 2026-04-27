@@ -1,4 +1,6 @@
 import { HistoryStack } from './HistoryStack';
+import { floodFillWithMask } from './floodFill';
+import { buildOutlineMask, type OutlineMaskInfo } from './outlineMask';
 
 /**
  * 캔버스 그리기 엔진 (설계서 6.1)
@@ -16,7 +18,7 @@ import { HistoryStack } from './HistoryStack';
  *  - Flood Fill 미구현 (V3)
  */
 
-export type Tool = 'brush' | 'eraser';
+export type Tool = 'brush' | 'eraser' | 'fill';
 
 export interface CanvasEngineConfig {
   paintCanvas: HTMLCanvasElement;
@@ -34,8 +36,11 @@ export interface EngineState {
 export class CanvasEngine {
   private paintCtx: CanvasRenderingContext2D;
   private outlineCtx: CanvasRenderingContext2D;
-  readonly width: number;
+  readonly width: number; // CSS pixels
   readonly height: number;
+  readonly internalWidth: number; // canvas.width (DPR 곱한)
+  readonly internalHeight: number;
+  readonly dpr: number;
 
   private tool: Tool = 'brush';
   private color = '#E53935';
@@ -48,11 +53,16 @@ export class CanvasEngine {
   private history = new HistoryStack();
   private dirty = false;
 
+  private outlineMask: OutlineMaskInfo | null = null;
+
   private listeners = new Set<(s: EngineState) => void>();
 
   constructor(config: CanvasEngineConfig) {
     this.width = config.cssWidth;
     this.height = config.cssHeight;
+    this.dpr = window.devicePixelRatio || 1;
+    this.internalWidth = config.cssWidth * this.dpr;
+    this.internalHeight = config.cssHeight * this.dpr;
     this.paintCtx = setupCanvas(config.paintCanvas, config.cssWidth, config.cssHeight);
     this.outlineCtx = setupCanvas(config.outlineCanvas, config.cssWidth, config.cssHeight);
 
@@ -87,11 +97,35 @@ export class CanvasEngine {
     this.outlineCtx.clearRect(0, 0, this.width, this.height);
   }
 
+  /**
+   * 외곽선 마스크 빌드 또는 외부에서 받은 마스크 주입.
+   * 마스크는 내부 픽셀(canvas.width) 단위.
+   */
+  setOutlineMask(mask: OutlineMaskInfo): void {
+    this.outlineMask = mask;
+  }
+
+  buildAndSetMask(image: HTMLImageElement | HTMLCanvasElement | ImageBitmap): OutlineMaskInfo {
+    const mask = buildOutlineMask(image, this.internalWidth, this.internalHeight);
+    this.outlineMask = mask;
+    return mask;
+  }
+
+  hasMask(): boolean {
+    return this.outlineMask !== null;
+  }
+
   // ---------- 그리기 ----------
   /**
    * @param point 캔버스 CSS 좌표
    */
   strokeStart(point: { x: number; y: number }): void {
+    if (this.tool === 'fill') {
+      // 단발성 — stroke 시작이 곧 끝. isStroking 미설정.
+      this.applyFloodFill(point);
+      return;
+    }
+
     this.isStroking = true;
     this.lastX = point.x;
     this.lastY = point.y;
@@ -111,6 +145,30 @@ export class CanvasEngine {
     ctx.arc(point.x, point.y, this.brushSize / 2, 0, Math.PI * 2);
     ctx.fillStyle = this.tool === 'eraser' ? '#000' : this.color;
     ctx.fill();
+  }
+
+  private applyFloodFill(point: { x: number; y: number }): void {
+    if (!this.outlineMask) return;
+    // CSS → 내부 픽셀 좌표
+    const ix = Math.floor(point.x * this.dpr);
+    const iy = Math.floor(point.y * this.dpr);
+
+    // Flood Fill은 내부 픽셀 단위 ImageData에서 작동.
+    // ctx.scale(dpr, dpr) 상태에서 putImageData는 변환 무시하고 내부 좌표에 그대로 들어감.
+    const ok = floodFillWithMask({
+      ctx: this.paintCtx,
+      mask: this.outlineMask.bytes,
+      width: this.outlineMask.width,
+      height: this.outlineMask.height,
+      startX: ix,
+      startY: iy,
+      fillColor: hexToRgba(this.color),
+    });
+    if (!ok) return;
+
+    this.dirty = true;
+    this.history.push(this.snapshotPaint());
+    this.notify();
   }
 
   strokeMove(point: { x: number; y: number }): void {
@@ -205,6 +263,10 @@ export class CanvasEngine {
   }
 
   // ---------- 내부 ----------
+  /**
+   * 내부 픽셀 단위 스냅샷 (canvas.width × canvas.height).
+   * ctx.scale(dpr, dpr) 상태와 무관하게 putImageData는 내부 좌표 단위로 동작.
+   */
   private snapshotPaint(): ImageData {
     const c = this.paintCtx.canvas;
     return this.paintCtx.getImageData(0, 0, c.width, c.height);
@@ -214,6 +276,13 @@ export class CanvasEngine {
     const s = this.getState();
     for (const l of this.listeners) l(s);
   }
+}
+
+function hexToRgba(hex: string): [number, number, number, number] {
+  const m = hex.match(/^#?([0-9a-f]{6})$/i);
+  if (!m) return [0, 0, 0, 255];
+  const n = parseInt(m[1], 16);
+  return [(n >> 16) & 0xff, (n >> 8) & 0xff, n & 0xff, 255];
 }
 
 export function setupCanvas(
