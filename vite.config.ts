@@ -22,7 +22,7 @@ export default defineConfig({
       workbox: {
         // 큰 폰트 파일은 precache에서 제외 (브라우저 자체 캐시에 맡김)
         globPatterns: ['**/*.{js,css,html,svg,png,ico}'],
-        globIgnores: ['**/PretendardVariable*'],
+        globIgnores: ['**/PretendardVariable*', '**/cv/opencv.js'],
         // 앱은 SPA — 모든 라우트는 index.html로 fallback
         navigateFallback: '/index.html',
         cleanupOutdatedCaches: true,

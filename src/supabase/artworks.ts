@@ -16,6 +16,16 @@ export async function listArtworks(): Promise<Artwork[]> {
   return data ?? [];
 }
 
+export async function getArtworkById(id: string): Promise<Artwork | null> {
+  const { data, error } = await supabase
+    .from('artworks')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
 export async function insertArtwork(
   pageId: string | null,
   imagePath: string,
@@ -31,10 +41,10 @@ export async function insertArtwork(
 }
 
 export async function deleteArtwork(artwork: Artwork): Promise<void> {
-  // 1) Storage 객체 삭제
-  await supabase.storage.from('artworks').remove([artwork.image_path]);
+  // 1) Storage 객체 삭제 (실패해도 진행 — orphan보단 row 삭제가 우선)
+  await supabase.storage.from('artworks').remove([artwork.image_path]).catch(() => {});
   if (artwork.thumbnail_path) {
-    await supabase.storage.from('thumbnails').remove([artwork.thumbnail_path]);
+    await supabase.storage.from('thumbnails').remove([artwork.thumbnail_path]).catch(() => {});
   }
   // 2) DB row 삭제
   const { error } = await supabase.from('artworks').delete().eq('id', artwork.id);

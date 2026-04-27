@@ -12,6 +12,9 @@ dist-ssr
 # claude
 .claude/settings.local.json
 
+# OpenCV.js (8MB+, downloaded via npm run fetch:opencv)
+public/cv/opencv.js
+
 # env
 .env
 .env.local

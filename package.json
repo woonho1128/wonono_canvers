@@ -16,7 +16,8 @@
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
     "check": "npm run typecheck && npm run lint && npm run test",
-    "seed:outlines": "node --env-file=.env.local scripts/seed-outlines.mjs"
+    "seed:outlines": "node --env-file=.env.local scripts/seed-outlines.mjs",
+    "fetch:opencv": "node scripts/fetch-opencv.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.104.1",

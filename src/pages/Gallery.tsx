@@ -37,14 +37,17 @@ function ArtworkCard({ artwork }: { artwork: Artwork }) {
     ? publicUrl('thumbnails', artwork.thumbnail_path)
     : publicUrl('artworks', artwork.image_path);
   return (
-    <div className="bg-white aspect-square rounded-3xl shadow-sm overflow-hidden flex items-center justify-center">
+    <Link
+      to={`/gallery/${artwork.id}`}
+      className="kid-btn bg-white aspect-square flex items-center justify-center p-4 overflow-hidden"
+    >
       <img
         src={src}
         alt="내 그림"
         className="max-w-full max-h-full object-contain"
         loading="lazy"
       />
-    </div>
+    </Link>
   );
 }
 

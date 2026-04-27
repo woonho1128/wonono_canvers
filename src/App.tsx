@@ -5,7 +5,7 @@ import CategorySelect from './pages/CategorySelect';
 import PageGrid from './pages/PageGrid';
 import ColoringScreen from './pages/ColoringScreen';
 import Gallery from './pages/Gallery';
-import ParentGate from './pages/ParentGate';
+import ArtworkDetail from './pages/ArtworkDetail';
 import ParentDashboard from './pages/ParentDashboard';
 import PhotoToOutline from './pages/PhotoToOutline';
 
@@ -33,8 +33,8 @@ export default function App() {
           <Route path="/categories/:categoryId" element={<PageGrid />} />
           <Route path="/color/:pageId" element={<ColoringScreen />} />
           <Route path="/gallery" element={<Gallery />} />
-          <Route path="/parent" element={<ParentGate />} />
-          <Route path="/parent/dashboard" element={<ParentDashboard />} />
+          <Route path="/gallery/:artworkId" element={<ArtworkDetail />} />
+          <Route path="/parent" element={<ParentDashboard />} />
           <Route path="/parent/photo-to-outline" element={<PhotoToOutline />} />
         </Routes>
       </BrowserRouter>

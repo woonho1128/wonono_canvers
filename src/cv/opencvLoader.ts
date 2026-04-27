@@ -1,23 +1,73 @@
 /**
  * OpenCV.js 동적 로더 (설계서 6.4.5)
  *
- * - 메인 번들에 포함하지 않음 (~8MB)
- * - 사진 변환 화면 진입 시점에만 다운로드
- * - Service Worker가 받은 wasm을 CacheFirst 캐싱 (vite.config.ts)
+ * - 메인 번들에 포함하지 않음 (~10MB)
+ * - PhotoToOutline 진입 시점에만 다운로드
+ * - Service Worker가 받은 wasm을 CacheFirst 캐싱 (vite.config.ts runtimeCaching)
  *
- * 호스팅 옵션:
- *  - 옵션 A: opencv.js를 public/cv/opencv.js에 두고 자체 호스팅 (권장)
- *  - 옵션 B: docs.opencv.org CDN (CORS 필요, 느릴 수 있음)
+ * 자체 호스팅: `public/cv/opencv.js` — `npm run fetch:opencv`로 다운로드.
  *
- * TODO: 5주차 구현.
+ * 사용:
+ *   const cv = await loadOpenCV();
+ *   const src = cv.imread(canvas);
+ *   ...
  */
 
-// OpenCV.js의 'cv' 전역은 자체 타입이 모호하므로 unknown으로 받고
-// 실제 사용처에서 좁힌다.
-let cvInstance: unknown = null;
+// OpenCV.js의 'cv' API는 매우 광범위하고 자체 타입이 모호하므로
+// 호출처에서 좁혀 사용한다.
+export type Cv = unknown;
 
-export async function loadOpenCV(): Promise<unknown> {
-  if (cvInstance) return cvInstance;
-  // TODO: <script src="/cv/opencv.js"> 동적 삽입 + cv['onRuntimeInitialized'] 대기
-  throw new Error('not implemented');
+declare global {
+  interface Window {
+    cv?: Cv & {
+      onRuntimeInitialized?: () => void;
+      Mat?: unknown;
+    };
+    Module?: { onRuntimeInitialized?: () => void };
+  }
+}
+
+const SCRIPT_PATH = '/cv/opencv.js';
+let loadingPromise: Promise<Cv> | null = null;
+
+export function loadOpenCV(): Promise<Cv> {
+  if (loadingPromise) return loadingPromise;
+  loadingPromise = new Promise<Cv>((resolve, reject) => {
+    if (window.cv && (window.cv as { Mat?: unknown }).Mat) {
+      resolve(window.cv);
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = SCRIPT_PATH;
+    script.async = true;
+
+    const ready = () => resolve(window.cv as Cv);
+
+    script.onerror = () => {
+      loadingPromise = null;
+      reject(new Error(`Failed to load ${SCRIPT_PATH}. 'npm run fetch:opencv'를 실행하셨나요?`));
+    };
+
+    script.onload = () => {
+      const cv = window.cv as { Mat?: unknown; onRuntimeInitialized?: () => void } | undefined;
+      if (!cv) {
+        loadingPromise = null;
+        reject(new Error('opencv.js loaded but global cv missing'));
+        return;
+      }
+      if (cv.Mat) {
+        // 이미 ready
+        ready();
+      } else {
+        cv.onRuntimeInitialized = () => ready();
+      }
+    };
+
+    document.head.appendChild(script);
+  });
+  return loadingPromise;
+}
+
+export function isOpenCVLoaded(): boolean {
+  return Boolean(window.cv && (window.cv as { Mat?: unknown }).Mat);
 }
