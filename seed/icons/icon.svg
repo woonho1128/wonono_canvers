@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  KidPaint 메인 아이콘 (any purpose)
+  - 528x528 viewBox로 8px safe margin (PWA any 권장 95% 활용)
+  - 원본 자산은 SVG, sharp로 PNG 192/512 생성
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- 배경: 둥근 모서리 + 따뜻한 크림 -->
+  <rect width="512" height="512" rx="96" fill="#FFF8E7"/>
+
+  <!-- 사과 본체 (붉은 fill + 검은 외곽선) -->
+  <g transform="translate(256 256) scale(0.55) translate(-400 -460)">
+    <path
+      d="M 400 280
+         C 280 200, 160 280, 160 460
+         C 160 620, 280 720, 400 700
+         C 520 720, 640 620, 640 460
+         C 640 280, 520 200, 400 280 Z"
+      fill="#E53935" stroke="#212121" stroke-width="14"
+      stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- 위쪽 살짝 들어간 곡선 -->
+    <path d="M 320 290 Q 400 340 480 290"
+      fill="none" stroke="#212121" stroke-width="14"
+      stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- 줄기 -->
+    <path d="M 400 280 Q 410 220 440 200"
+      fill="none" stroke="#212121" stroke-width="14"
+      stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- 잎 -->
+    <path
+      d="M 440 200
+         Q 520 160 580 200
+         Q 540 260 460 240 Z"
+      fill="#43A047" stroke="#212121" stroke-width="14"
+      stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>

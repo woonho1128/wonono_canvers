@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Maskable 아이콘 — 핵심 그래픽이 80% 안전 영역(중심 ratio 0.8) 안에 있어야 함.
+  Android 적응형 마스크가 둥근/사각/물방울 등 다양한 모양으로 잘려도 사과는 보임.
+  배경은 가장자리까지 가득 채움 (잘려도 OK).
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- 배경: 모서리까지 가득 (잘림 허용) -->
+  <rect width="512" height="512" fill="#FFF8E7"/>
+
+  <!-- 사과 본체 (안전 영역 80% 안에 핵심) -->
+  <g transform="translate(256 256) scale(0.42) translate(-400 -460)">
+    <path
+      d="M 400 280
+         C 280 200, 160 280, 160 460
+         C 160 620, 280 720, 400 700
+         C 520 720, 640 620, 640 460
+         C 640 280, 520 200, 400 280 Z"
+      fill="#E53935" stroke="#212121" stroke-width="16"
+      stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 320 290 Q 400 340 480 290"
+      fill="none" stroke="#212121" stroke-width="16"
+      stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 400 280 Q 410 220 440 200"
+      fill="none" stroke="#212121" stroke-width="16"
+      stroke-linecap="round" stroke-linejoin="round"/>
+    <path
+      d="M 440 200
+         Q 520 160 580 200
+         Q 540 260 460 240 Z"
+      fill="#43A047" stroke="#212121" stroke-width="16"
+      stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>

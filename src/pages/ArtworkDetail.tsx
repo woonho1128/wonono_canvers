@@ -50,7 +50,7 @@ function Body({ artwork }: { artwork: { id: string; image_path: string; thumbnai
 
   return (
     <>
-      <header className="h-touch-lg shrink-0 flex items-center px-3 gap-2 border-b border-black/10">
+      <header className="h-touch-lg shrink-0 flex items-center px-2 gap-1 border-b border-black/10">
         <Link to="/gallery" className="kid-btn bg-white px-4 inline-flex items-center" aria-label="뒤로">
           ⬅️
         </Link>
