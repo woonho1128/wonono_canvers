@@ -8,7 +8,11 @@
  * TODO: 2주차 구현.
  */
 
-export function buildOutlineMask(_image: HTMLImageElement, _width: number, _height: number): Uint8Array {
+export function buildOutlineMask(
+  _image: HTMLImageElement,
+  _width: number,
+  _height: number,
+): Uint8Array {
   // TODO
   throw new Error('not implemented');
 }

@@ -21,7 +21,6 @@ export interface PointerControllerCallbacks {
 }
 
 export class PointerController {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   constructor(_canvas: HTMLCanvasElement, _callbacks: PointerControllerCallbacks) {
     // TODO
   }

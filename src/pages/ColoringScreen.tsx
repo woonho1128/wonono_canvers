@@ -5,7 +5,9 @@ export default function ColoringScreen() {
   return (
     <div className="h-full flex flex-col bg-app-bg">
       <header className="h-touch-lg flex items-center px-4 gap-2 border-b">
-        <Link to="/" className="kid-btn bg-white px-4 py-2">🏠</Link>
+        <Link to="/" className="kid-btn bg-white px-4 py-2">
+          🏠
+        </Link>
         <div className="flex-1" />
         <button className="kid-btn bg-white px-4 py-2">↩️</button>
         <button className="kid-btn bg-white px-4 py-2">↪️</button>

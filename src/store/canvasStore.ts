@@ -39,5 +39,6 @@ export const useCanvasStore = create<CanvasState>((set) => ({
   setBrushSize: (brushSize) => set({ brushSize }),
   setUndoRedo: (canUndo, canRedo) => set({ canUndo, canRedo }),
   incrementStroke: () => set((s) => ({ strokeCount: s.strokeCount + 1 })),
-  reset: () => set({ tool: 'brush', brushSize: 'medium', canUndo: false, canRedo: false, strokeCount: 0 }),
+  reset: () =>
+    set({ tool: 'brush', brushSize: 'medium', canUndo: false, canRedo: false, strokeCount: 0 }),
 }));

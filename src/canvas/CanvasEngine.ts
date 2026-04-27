@@ -16,13 +16,16 @@ export interface CanvasEngineConfig {
 }
 
 export class CanvasEngine {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   constructor(_config: CanvasEngineConfig) {
     // TODO
   }
 }
 
-export function setupCanvas(canvas: HTMLCanvasElement, w: number, h: number): CanvasRenderingContext2D {
+export function setupCanvas(
+  canvas: HTMLCanvasElement,
+  w: number,
+  h: number,
+): CanvasRenderingContext2D {
   const dpr = window.devicePixelRatio || 1;
   canvas.width = w * dpr;
   canvas.height = h * dpr;

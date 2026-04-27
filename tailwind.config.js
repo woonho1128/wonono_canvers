@@ -40,10 +40,10 @@ export default {
       },
       // 5세 터치 타겟 (8.4)
       spacing: {
-        'touch': '60px',
+        touch: '60px',
         'touch-lg': '80px',
-        'tile': '240px',
-        'menu': '200px',
+        tile: '240px',
+        menu: '200px',
       },
       // 큰 글자 우선 (8.3)
       fontSize: {

@@ -9,13 +9,7 @@
 
 import { Howl } from 'howler';
 
-export type SoundId =
-  | 'pickColor'
-  | 'fill'
-  | 'save'
-  | 'undo'
-  | 'reset'
-  | 'home';
+export type SoundId = 'pickColor' | 'fill' | 'save' | 'undo' | 'reset' | 'home';
 
 const sources: Record<SoundId, string> = {
   pickColor: '/sounds/pick-color.mp3',
