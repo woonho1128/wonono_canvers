@@ -225,7 +225,64 @@ export class CanvasEngine {
     return true;
   }
 
+  // ---------- 캔버스 조작 ----------
+  /**
+   * 색칠 레이어 전체 초기화 + history reset.
+   * "처음부터 다시" 동작. 외곽선은 유지.
+   */
+  resetPaint(): void {
+    const c = this.paintCtx.canvas;
+    this.paintCtx.save();
+    this.paintCtx.setTransform(1, 0, 0, 1, 0, 0);
+    this.paintCtx.clearRect(0, 0, c.width, c.height);
+    this.paintCtx.restore();
+    this.history.clear();
+    this.history.push(this.snapshotPaint());
+    this.dirty = false;
+    this.notify();
+  }
+
+  /**
+   * 외부에서 받은 Blob(미완성 작품)을 색칠 레이어에 복원.
+   * 자동저장 draft 이어 그리기에 사용.
+   */
+  async loadPaintBlob(blob: Blob): Promise<void> {
+    const url = URL.createObjectURL(blob);
+    try {
+      const img = await new Promise<HTMLImageElement>((res, rej) => {
+        const i = new Image();
+        i.onload = () => res(i);
+        i.onerror = () => rej(new Error('image load failed'));
+        i.src = url;
+      });
+      const c = this.paintCtx.canvas;
+      this.paintCtx.save();
+      this.paintCtx.setTransform(1, 0, 0, 1, 0, 0);
+      this.paintCtx.clearRect(0, 0, c.width, c.height);
+      this.paintCtx.drawImage(img, 0, 0, c.width, c.height);
+      this.paintCtx.restore();
+      this.history.clear();
+      this.history.push(this.snapshotPaint());
+      this.dirty = true;
+      this.notify();
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  }
+
   // ---------- 추출 ----------
+  /**
+   * 색칠 레이어만 PNG Blob으로 반환 (자동저장 draft용).
+   */
+  async exportPaintBlob(): Promise<Blob> {
+    return new Promise<Blob>((resolve, reject) => {
+      this.paintCtx.canvas.toBlob((blob) => {
+        if (blob) resolve(blob);
+        else reject(new Error('toBlob 실패'));
+      }, 'image/png');
+    });
+  }
+
   /**
    * 색칠 + 외곽선을 합쳐 PNG Blob으로 반환.
    * 흰 배경 → 색칠 → 외곽선 순서로 합성.

@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
 import { initServiceWorker } from './pwa/swUpdate';
+import { useSettingsStore } from './store/settingsStore';
 import './styles/index.css';
 
 createRoot(document.getElementById('root')!).render(
@@ -11,3 +12,4 @@ createRoot(document.getElementById('root')!).render(
 );
 
 initServiceWorker();
+void useSettingsStore.getState().hydrate();
