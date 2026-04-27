@@ -42,7 +42,7 @@ export default function ColoringScreen() {
 
 function Workspace({ page }: { page: ColoringPage }) {
   const navigate = useNavigate();
-  const containerRef = useRef<HTMLDivElement>(null);
+  const viewportRef = useRef<HTMLElement>(null);
   const paintCanvasRef = useRef<HTMLCanvasElement>(null);
   const outlineCanvasRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef<CanvasEngine | null>(null);
@@ -60,23 +60,47 @@ function Workspace({ page }: { page: ColoringPage }) {
     isDirty: false,
   });
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'error'>('idle');
+  const [canvasSize, setCanvasSize] = useState(0);
+
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+
+    const updateSize = () => {
+      const rect = viewport.getBoundingClientRect();
+      const style = window.getComputedStyle(viewport);
+      const horizontalPadding = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
+      const verticalPadding = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
+      const availableWidth = rect.width - horizontalPadding;
+      const availableHeight = rect.height - verticalPadding;
+      const nextSize = Math.floor(Math.min(availableWidth, availableHeight));
+      setCanvasSize((current) => (Math.abs(current - nextSize) > 1 ? nextSize : current));
+    };
+
+    updateSize();
+    const observer = new ResizeObserver(updateSize);
+    observer.observe(viewport);
+    window.addEventListener('orientationchange', updateSize);
+    window.addEventListener('resize', updateSize);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('orientationchange', updateSize);
+      window.removeEventListener('resize', updateSize);
+    };
+  }, []);
 
   // 엔진 셋업 + 외곽선/마스크/draft 로드 + Pointer 컨트롤러
   useEffect(() => {
-    const container = containerRef.current;
     const paintCanvas = paintCanvasRef.current;
     const outlineCanvas = outlineCanvasRef.current;
-    if (!container || !paintCanvas || !outlineCanvas) return;
-
-    const rect = container.getBoundingClientRect();
-    const size = Math.floor(Math.min(rect.width, rect.height));
-    if (size <= 0) return;
+    if (!paintCanvas || !outlineCanvas || canvasSize <= 0) return;
 
     const engine = new CanvasEngine({
       paintCanvas,
       outlineCanvas,
-      cssWidth: size,
-      cssHeight: size,
+      cssWidth: canvasSize,
+      cssHeight: canvasSize,
     });
     engineRef.current = engine;
     engine.setColor(color.hex);
@@ -154,7 +178,7 @@ function Workspace({ page }: { page: ColoringPage }) {
       pointerRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page.id]);
+  }, [page.id, canvasSize]);
 
   // 도구/색/굵기/입력 모드 동기화
   useEffect(() => {
@@ -271,11 +295,10 @@ function Workspace({ page }: { page: ColoringPage }) {
         onReset={onReset}
       />
 
-      <main className="flex-1 grid place-items-center p-4 min-h-0 overflow-hidden">
+      <main ref={viewportRef} className="flex-1 grid place-items-center p-4 min-h-0 overflow-hidden">
         <div
-          ref={containerRef}
-          className="relative aspect-square w-full max-h-full max-w-full bg-white rounded-2xl shadow-sm"
-          style={{ height: 'min(100%, 100vw)' }}
+          className="relative bg-white rounded-2xl shadow-sm overflow-hidden"
+          style={{ width: canvasSize, height: canvasSize }}
         >
           <canvas
             ref={paintCanvasRef}

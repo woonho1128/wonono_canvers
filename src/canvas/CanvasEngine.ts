@@ -90,7 +90,7 @@ export class CanvasEngine {
   // ---------- 외곽선 ----------
   drawOutline(image: HTMLImageElement | HTMLCanvasElement | ImageBitmap): void {
     this.outlineCtx.clearRect(0, 0, this.width, this.height);
-    this.outlineCtx.drawImage(image, 0, 0, this.width, this.height);
+    drawImageContained(this.outlineCtx, image, this.width, this.height);
   }
 
   clearOutline(): void {
@@ -340,6 +340,22 @@ function hexToRgba(hex: string): [number, number, number, number] {
   if (!m) return [0, 0, 0, 255];
   const n = parseInt(m[1], 16);
   return [(n >> 16) & 0xff, (n >> 8) & 0xff, n & 0xff, 255];
+}
+
+function drawImageContained(
+  ctx: CanvasRenderingContext2D,
+  image: HTMLImageElement | HTMLCanvasElement | ImageBitmap,
+  width: number,
+  height: number,
+): void {
+  const sourceWidth = 'naturalWidth' in image ? image.naturalWidth : image.width;
+  const sourceHeight = 'naturalHeight' in image ? image.naturalHeight : image.height;
+  const scale = Math.min(width / sourceWidth, height / sourceHeight);
+  const drawWidth = sourceWidth * scale;
+  const drawHeight = sourceHeight * scale;
+  const x = (width - drawWidth) / 2;
+  const y = (height - drawHeight) / 2;
+  ctx.drawImage(image, x, y, drawWidth, drawHeight);
 }
 
 export function setupCanvas(

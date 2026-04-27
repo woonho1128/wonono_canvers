@@ -27,7 +27,7 @@ export function buildOutlineMask(
   tmp.height = height;
   const tctx = tmp.getContext('2d', { willReadFrequently: true });
   if (!tctx) throw new Error('2D context unavailable');
-  tctx.drawImage(image, 0, 0, width, height);
+  drawImageContained(tctx, image, width, height);
   const data = tctx.getImageData(0, 0, width, height).data;
 
   const bytes = new Uint8Array(width * height);
@@ -42,4 +42,20 @@ export function buildOutlineMask(
     }
   }
   return { bytes, width, height };
+}
+
+function drawImageContained(
+  ctx: CanvasRenderingContext2D,
+  image: HTMLImageElement | HTMLCanvasElement | ImageBitmap,
+  width: number,
+  height: number,
+): void {
+  const sourceWidth = 'naturalWidth' in image ? image.naturalWidth : image.width;
+  const sourceHeight = 'naturalHeight' in image ? image.naturalHeight : image.height;
+  const scale = Math.min(width / sourceWidth, height / sourceHeight);
+  const drawWidth = sourceWidth * scale;
+  const drawHeight = sourceHeight * scale;
+  const x = (width - drawWidth) / 2;
+  const y = (height - drawHeight) / 2;
+  ctx.drawImage(image, x, y, drawWidth, drawHeight);
 }
