@@ -1,0 +1,17 @@
+:root {
+  font-family: system-ui, 'Pretendard', sans-serif;
+  background: #FFF8E7;
+  color: #3D3D3D;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+  overscroll-behavior: none;
+}
