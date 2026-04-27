@@ -13,6 +13,16 @@ export async function listPages(categoryId?: string): Promise<ColoringPage[]> {
   return data ?? [];
 }
 
+export async function getPageById(id: string): Promise<ColoringPage | null> {
+  const { data, error } = await supabase
+    .from('coloring_pages')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
 export async function insertUserPage(
   outlinePath: string,
   thumbnailPath: string | null,

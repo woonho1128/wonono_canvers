@@ -37,7 +37,7 @@ const supabase = createClient(url, key, {
  */
 const SEEDS = [
   { file: 'apple.svg', title: '사과', category: '음식' },
-  { file: 'balloon.svg', title: '풍선', category: null },
+  { file: 'balloon.svg', title: '풍선', category: '탈것' },
 ];
 
 const ROOT = join(import.meta.dirname, '..');
@@ -55,37 +55,48 @@ async function main() {
   console.log(`  카테고리 ${cats.length}개 로드됨`);
 
   let added = 0;
+  let updated = 0;
   let skipped = 0;
 
   for (const seed of SEEDS) {
     const storagePath = `system/${seed.file}`;
 
-    // 이미 등록된 도안인지 확인
-    const { data: existing, error: selErr } = await supabase
-      .from('coloring_pages')
-      .select('id, title')
-      .eq('outline_path', storagePath)
-      .maybeSingle();
-    if (selErr) throw selErr;
-
-    if (existing) {
-      console.log(`  ✓ ${seed.title}: 이미 등록됨 (${existing.id})`);
-      skipped++;
-      continue;
-    }
-
-    // SVG 파일 읽기
+    // SVG 파일 읽기 + Storage 업로드 (upsert — 항상 최신 SVG 반영)
     const svgBytes = await readFile(join(ROOT, 'seed', 'outlines', seed.file));
-
-    // Storage 업로드 (upsert)
     const { error: upErr } = await supabase.storage.from('outlines').upload(storagePath, svgBytes, {
       contentType: 'image/svg+xml',
       upsert: true,
     });
     if (upErr) throw upErr;
 
-    // DB insert
+    // DB row 존재 여부 확인
+    const { data: existing, error: selErr } = await supabase
+      .from('coloring_pages')
+      .select('id, title, category_id')
+      .eq('outline_path', storagePath)
+      .maybeSingle();
+    if (selErr) throw selErr;
+
     const categoryId = seed.category ? (catByName.get(seed.category) ?? null) : null;
+
+    if (existing) {
+      // 메타가 같으면 스킵, 다르면 update
+      if (existing.title === seed.title && existing.category_id === categoryId) {
+        console.log(`  ✓ ${seed.title}: 변경 없음 (${existing.id})`);
+        skipped++;
+        continue;
+      }
+      const { error: updErr } = await supabase
+        .from('coloring_pages')
+        .update({ title: seed.title, category_id: categoryId })
+        .eq('id', existing.id);
+      if (updErr) throw updErr;
+      console.log(`  ~ ${seed.title} → ${existing.id}  [category: ${seed.category ?? 'none'}] (updated)`);
+      updated++;
+      continue;
+    }
+
+    // 신규 insert
     const { data: page, error: insErr } = await supabase
       .from('coloring_pages')
       .insert({
@@ -98,11 +109,11 @@ async function main() {
       .single();
     if (insErr) throw insErr;
 
-    console.log(`  + ${seed.title} → ${page.id}  [category: ${seed.category ?? 'none'}]`);
+    console.log(`  + ${seed.title} → ${page.id}  [category: ${seed.category ?? 'none'}] (inserted)`);
     added++;
   }
 
-  console.log(`\ndone — 추가 ${added}개, 스킵 ${skipped}개`);
+  console.log(`\ndone — 추가 ${added}개, 갱신 ${updated}개, 스킵 ${skipped}개`);
 }
 
 main().catch((err) => {
