@@ -1,4 +1,5 @@
 @import 'pretendard/dist/web/variable/pretendardvariable.css';
+@import url('https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&family=Fredoka:wght@400;500;600;700&family=Nunito:wght@600;700;800;900&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -43,5 +44,23 @@
     @apply rounded-3xl font-bold text-kid-btn shadow-md shrink-0
            active:scale-95 transition-transform duration-100
            min-w-touch-lg min-h-touch-lg;
+  }
+
+  /* 새 디자인: chunky 입체 버튼 (눌리면 그림자 줄고 살짝 내려감) */
+  .kid-chunky {
+    @apply rounded-chunky font-display font-bold shrink-0
+           shadow-chunky transition-all duration-75
+           active:translate-y-1 active:shadow-none
+           min-w-tap min-h-tap;
+  }
+  .kid-chunky-orange {
+    @apply kid-chunky bg-kid-orange text-white shadow-chunky-orange
+           active:bg-kid-orange-deep;
+  }
+  .kid-chunky-yellow {
+    @apply kid-chunky bg-kid-yellow text-kid-ink shadow-chunky-yellow;
+  }
+  .kid-chunky-cream {
+    @apply kid-chunky bg-white text-kid-ink;
   }
 }

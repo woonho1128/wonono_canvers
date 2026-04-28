@@ -18,41 +18,92 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-full p-6 bg-app-bg flex flex-col items-center justify-center gap-6 relative">
+    <div className="min-h-screen bg-cream font-round text-kid-ink relative flex flex-col">
+      {/* 우상단 음소거 토글 */}
       <button
         type="button"
         aria-label={soundEnabled ? '음소거 켜기' : '음소거 끄기'}
         onClick={onMuteToggle}
-        className="absolute top-4 right-4 w-touch-lg h-touch-lg rounded-full bg-white text-3xl shadow-sm ring-2 ring-black/10"
+        className="absolute top-5 right-5 lg:top-7 lg:right-7
+                   w-touch-lg h-touch-lg rounded-full bg-white text-3xl
+                   shadow-chunky active:translate-y-1 active:shadow-none transition-all z-10"
       >
         {soundEnabled ? '🔊' : '🔇'}
       </button>
 
-      <h1 className="text-kid-title">조카 색칠놀이</h1>
+      <div className="flex-1 max-w-6xl mx-auto w-full px-6 py-10 lg:py-14
+                      flex flex-col items-center justify-center gap-10 lg:gap-14">
+        {/* 헤더 */}
+        <div className="text-center">
+          <div className="text-7xl lg:text-8xl mb-3">🦊</div>
+          <p className="font-hand text-xl lg:text-2xl text-kid-ink-soft">안녕!</p>
+          <h1 className="font-display font-extrabold text-4xl lg:text-6xl mt-2 leading-tight">
+            오늘은 뭐 <span className="text-kid-orange-deep">색칠</span>할까?
+          </h1>
+        </div>
 
-      <div className="flex flex-wrap gap-6 justify-center">
-        <Link
-          to="/categories"
-          onClick={onMenuTap}
-          className="kid-btn bg-app-orange text-white w-menu h-menu flex items-center justify-center"
-        >
-          🎨 색칠하기
-        </Link>
-        <Link
-          to="/gallery"
-          onClick={onMenuTap}
-          className="kid-btn bg-app-mint text-white w-menu h-menu flex items-center justify-center"
-        >
-          🖼️ 그림 보기
-        </Link>
-        <Link
-          to="/parent"
-          onClick={onMenuTap}
-          className="kid-btn bg-app-text text-white w-menu h-menu flex items-center justify-center"
-        >
-          👤 어른
-        </Link>
+        {/* 메인 메뉴 — 가로/세로 모두 3열 */}
+        <div className="w-full grid grid-cols-3 gap-5 lg:gap-7 max-w-3xl">
+          <HomeCard
+            to="/categories"
+            onTap={onMenuTap}
+            emoji="🎨"
+            label="색칠하기"
+            bg="bg-kid-orange"
+            shadow="shadow-chunky-orange"
+            text="text-white"
+          />
+          <HomeCard
+            to="/gallery"
+            onTap={onMenuTap}
+            emoji="🖼️"
+            label="그림 보기"
+            bg="bg-kid-yellow"
+            shadow="shadow-chunky-yellow"
+            text="text-kid-ink"
+          />
+          <HomeCard
+            to="/parent"
+            onTap={onMenuTap}
+            emoji="🔒"
+            label="어른"
+            bg="bg-white"
+            shadow="shadow-chunky"
+            text="text-kid-ink"
+          />
+        </div>
       </div>
     </div>
+  );
+}
+
+function HomeCard({
+  to,
+  onTap,
+  emoji,
+  label,
+  bg,
+  shadow,
+  text,
+}: {
+  to: string;
+  onTap: () => void;
+  emoji: string;
+  label: string;
+  bg: string;
+  shadow: string;
+  text: string;
+}) {
+  return (
+    <Link
+      to={to}
+      onClick={onTap}
+      className={`${bg} ${shadow} ${text}
+                  rounded-chunky aspect-square flex flex-col items-center justify-center gap-3 lg:gap-4
+                  transition-all duration-75 active:translate-y-1 active:shadow-none`}
+    >
+      <div className="text-6xl lg:text-7xl">{emoji}</div>
+      <div className="font-display font-extrabold text-xl lg:text-2xl">{label}</div>
+    </Link>
   );
 }

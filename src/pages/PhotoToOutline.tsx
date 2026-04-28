@@ -56,21 +56,33 @@ export default function PhotoToOutline() {
   const showCvWarmup = step.kind === 'pick' && step.mode === 'fast' && !cvReady;
 
   return (
-    <div className="min-h-full p-6 bg-app-bg">
-      <Link to="/parent" className="kid-btn bg-white px-6 inline-flex items-center">
-        ⬅️ 어른 메뉴
-      </Link>
-      <h1 className="text-kid-title mt-6 text-center">사진으로 도안 만들기</h1>
+    <div className="min-h-screen bg-cream font-round text-kid-ink flex flex-col">
+      <div className="flex-1 max-w-5xl mx-auto w-full px-6 pt-5 pb-10 lg:px-10 lg:pt-7 flex flex-col">
+        <header className="flex items-center gap-4">
+          <Link
+            to="/parent"
+            aria-label="어른 메뉴로"
+            className="kid-chunky-cream w-tap h-tap grid place-items-center text-2xl shrink-0"
+          >
+            ←
+          </Link>
+          <h1 className="font-display font-extrabold text-[28px] lg:text-[34px] leading-tight">
+            <span className="text-kid-orange-deep">사진</span>으로 도안 만들기 ✨
+          </h1>
+        </header>
 
-      {showCvWarmup && (
-        <p className="text-center text-sm text-app-text/50 mt-4">
-          ⏳ 처음 켤 때만 약 10초 — 도안 변환 엔진 준비 중...
-        </p>
-      )}
+        {showCvWarmup && (
+          <p className="mt-4 text-center text-sm text-kid-ink-soft font-hand">
+            ⏳ 처음 켤 때만 약 10초 — 도안 변환 엔진 준비 중...
+          </p>
+        )}
 
-      <AsyncBoundary state={categoriesState}>
-        {(categories) => <Flow step={step} setStep={setStep} categories={categories} />}
-      </AsyncBoundary>
+        <div className="flex-1 flex flex-col">
+          <AsyncBoundary state={categoriesState}>
+            {(categories) => <Flow step={step} setStep={setStep} categories={categories} />}
+          </AsyncBoundary>
+        </div>
+      </div>
     </div>
   );
 }
@@ -246,44 +258,100 @@ async function save(
 
 function ModeStep({ onPick }: { onPick: (mode: Mode) => void }) {
   return (
-    <div className="mt-8 max-w-md mx-auto flex flex-col gap-4">
-      <p className="text-kid-body text-center text-app-text/70">
+    <div className="flex-1 mt-8 lg:mt-10 flex flex-col items-center justify-center gap-6">
+      <p className="text-kid-ink-soft text-lg font-hand">
         어떻게 도안을 만들까요?
       </p>
 
-      <button
-        type="button"
-        onClick={() => onPick('fast')}
-        className="kid-btn bg-app-mint text-white py-5 text-left px-6"
-      >
-        <div className="text-2xl font-bold">⚡ 빠른 변환 (무료)</div>
-        <div className="text-sm opacity-90 mt-1">
-          기기에서 바로 처리 · 단순 만화/사물에 좋음
-        </div>
-      </button>
-
-      <button
-        type="button"
-        onClick={() => onPick('api')}
-        className="kid-btn bg-app-orange text-white py-5 text-left px-6"
-      >
-        <div className="text-2xl font-bold">✨ 고품질 변환 (AI)</div>
-        <div className="text-sm opacity-90 mt-1">
-          AI가 깔끔한 도안으로 · 5~20초 · 인물·복잡한 사진도 OK
-        </div>
-      </button>
-
-      <button
-        type="button"
-        onClick={() => onPick('upload')}
-        className="kid-btn bg-white py-5 text-left px-6 ring-2 ring-black/10"
-      >
-        <div className="text-2xl font-bold">📤 도안 직접 업로드</div>
-        <div className="text-sm text-app-text/70 mt-1">
-          이미 만들어진 도안 이미지를 그대로 등록
-        </div>
-      </button>
+      {/* 가로(landscape, lg+)에선 3열, 세로/모바일은 1열 */}
+      <div className="w-full grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <ModeCard
+          emoji="⚡"
+          accent="bg-[#B5EAD7]"
+          title="빠른 변환"
+          sub="기기에서 바로 처리 · 무료"
+          desc="단순 만화·사물에 좋아요"
+          onClick={() => onPick('fast')}
+        />
+        <ModeCard
+          emoji="✨"
+          accent="bg-[#FFE680]"
+          title="고품질 변환"
+          sub="AI · 5~20초"
+          desc="인물·복잡한 사진도 OK"
+          onClick={() => onPick('api')}
+          highlighted
+        />
+        <ModeCard
+          emoji="📤"
+          accent="bg-[#D4C5F9]"
+          title="도안 직접 업로드"
+          sub="이미 만들어진 도안"
+          desc="흑백 라인아트 권장"
+          onClick={() => onPick('upload')}
+        />
+      </div>
     </div>
+  );
+}
+
+function ModeCard({
+  emoji,
+  accent,
+  title,
+  sub,
+  desc,
+  onClick,
+  highlighted,
+}: {
+  emoji: string;
+  accent: string;
+  title: string;
+  sub: string;
+  desc: string;
+  onClick: () => void;
+  highlighted?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={clsx(
+        'kid-chunky w-full text-left p-5 lg:p-6 flex items-center gap-4 lg:flex-col lg:items-start lg:gap-3 h-full',
+        highlighted ? 'kid-chunky-orange' : 'kid-chunky-cream',
+      )}
+    >
+      <div
+        className={clsx(
+          'shrink-0 w-16 h-16 lg:w-20 lg:h-20 rounded-[22px] grid place-items-center text-3xl lg:text-4xl',
+          highlighted ? 'bg-white/25' : accent,
+        )}
+      >
+        {emoji}
+      </div>
+      <div className="min-w-0 flex-1 lg:w-full">
+        <div className="font-display font-extrabold text-xl lg:text-2xl leading-tight">
+          {title}
+        </div>
+        <div
+          className={clsx(
+            'text-sm font-bold mt-1',
+            highlighted ? 'text-white/90' : 'text-kid-ink',
+          )}
+        >
+          {sub}
+        </div>
+        <div
+          className={clsx(
+            'text-xs lg:text-sm mt-1 font-hand',
+            highlighted ? 'text-white/80' : 'text-kid-ink-soft',
+          )}
+        >
+          {desc}
+        </div>
+      </div>
+      <span className="shrink-0 text-2xl lg:hidden">›</span>
+    </button>
   );
 }
 
@@ -305,34 +373,58 @@ function PickStep({
     upload: '이미 만들어진 도안 이미지를 골라주세요.\n흑백 라인아트 권장.',
   };
 
+  const modeLabel: Record<Mode, string> = {
+    fast: '⚡ 빠른 변환',
+    api: '✨ 고품질 변환',
+    upload: '📤 직접 업로드',
+  };
+
   return (
-    <div className="mt-8 max-w-md mx-auto flex flex-col gap-4">
+    <div className="flex-1 mt-7 max-w-3xl mx-auto w-full flex flex-col justify-center gap-5">
       <button
         type="button"
         onClick={onBack}
-        className="self-start text-sm text-app-text/60 underline"
+        className="self-start text-sm font-hand text-kid-ink-soft underline underline-offset-4"
       >
         ← 모드 다시 선택
       </button>
-      <p className="text-kid-body text-center text-app-text/70 whitespace-pre-line">
-        {helpText[mode]}
-      </p>
-      <button
-        type="button"
-        onClick={() => fileInputRef.current?.click()}
-        className="kid-btn bg-app-orange text-white py-6 text-2xl"
+
+      <div className="bg-peach rounded-chunky px-6 py-5">
+        <div className="font-display font-extrabold text-kid-orange-deep text-lg">
+          {modeLabel[mode]}
+        </div>
+        <p className="mt-1 font-hand text-kid-ink whitespace-pre-line text-base lg:text-lg leading-snug">
+          {helpText[mode]}
+        </p>
+      </div>
+
+      <div
+        className={clsx(
+          'grid gap-4',
+          mode === 'upload' ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2',
+        )}
       >
-        🖼️ 갤러리에서 고르기
-      </button>
-      {mode !== 'upload' && (
         <button
           type="button"
-          onClick={() => cameraInputRef.current?.click()}
-          className="kid-btn bg-app-mint text-white py-6 text-2xl"
+          onClick={() => fileInputRef.current?.click()}
+          className="kid-chunky-orange w-full px-6 py-6 flex items-center justify-center gap-3 text-2xl"
         >
-          📷 카메라로 찍기
+          <span className="text-3xl">🖼️</span>
+          <span>갤러리에서 고르기</span>
         </button>
-      )}
+
+        {mode !== 'upload' && (
+          <button
+            type="button"
+            onClick={() => cameraInputRef.current?.click()}
+            className="kid-chunky-yellow w-full px-6 py-6 flex items-center justify-center gap-3 text-2xl"
+          >
+            <span className="text-3xl">📷</span>
+            <span>카메라로 찍기</span>
+          </button>
+        )}
+      </div>
+
       <input
         ref={fileInputRef}
         type="file"
@@ -371,22 +463,31 @@ function PreviewStep({
   onConvert: () => void;
   onCancel: () => void;
 }) {
-  const label = mode === 'api' ? '✨ AI로 변환하기' : '✨ 변환하기';
+  const label = mode === 'api' ? '✨ AI로 변환' : '✨ 변환하기';
   return (
-    <div className="mt-8 max-w-2xl mx-auto flex flex-col items-center gap-4">
-      <img
-        src={photo.src}
-        alt="원본 사진"
-        className="max-h-[60vh] max-w-full rounded-2xl shadow"
-      />
-      <div className="flex gap-4 mt-4">
-        <button type="button" onClick={onCancel} className="kid-btn bg-white px-6 py-3">
+    <div className="flex-1 mt-7 max-w-3xl mx-auto w-full flex flex-col items-center justify-center gap-5">
+      <div className="w-full bg-white rounded-canvas p-3 shadow-chunky-soft">
+        <img
+          src={photo.src}
+          alt="원본 사진"
+          className="block w-full max-h-[60vh] object-contain rounded-[22px]"
+        />
+      </div>
+      <p className="font-hand text-kid-ink-soft text-base">
+        이 사진으로 도안을 만들까요?
+      </p>
+      <div className="flex gap-3 w-full max-w-md">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="kid-chunky-cream flex-1 py-4 text-base font-bold"
+        >
           다른 사진
         </button>
         <button
           type="button"
           onClick={onConvert}
-          className="kid-btn bg-app-orange text-white px-8 py-3"
+          className="kid-chunky-orange flex-[1.4] py-4 text-lg"
         >
           {label}
         </button>
@@ -400,10 +501,12 @@ function ConvertingStep({ mode }: { mode: Mode }) {
     mode === 'api' ? 'AI가 도안을 만들고 있어요...' : '도안으로 만들고 있어요...';
   const sub = mode === 'api' ? '5~20초 정도 걸려요' : '처음엔 좀 오래 걸려요 (~10초)';
   return (
-    <div className="mt-16 grid place-items-center text-center">
-      <div className="text-7xl animate-pulse">🪄</div>
-      <p className="text-kid-body mt-6">{message}</p>
-      <p className="text-sm text-app-text/60 mt-2">{sub}</p>
+    <div className="flex-1 grid place-items-center text-center">
+      <div className="text-7xl animate-bounce">🪄</div>
+      <p className="mt-6 font-display font-extrabold text-2xl text-kid-orange-deep">
+        {message}
+      </p>
+      <p className="mt-2 font-hand text-kid-ink-soft">{sub}</p>
     </div>
   );
 }
@@ -445,100 +548,119 @@ function ResultStep({
   const showDetailSlider = step.mode === 'fast';
 
   return (
-    <div className="mt-6 max-w-2xl mx-auto flex flex-col items-center gap-4">
-      <div
-        className="relative bg-white rounded-2xl shadow overflow-hidden grid place-items-center max-h-[65vh] max-w-full"
-        style={{ aspectRatio: photoAspect }}
-        onPointerDown={() => !isUpload && setShowOriginal(true)}
-        onPointerUp={() => setShowOriginal(false)}
-        onPointerLeave={() => setShowOriginal(false)}
-      >
-        <img
-          src={showOriginal && !isUpload ? step.photoObjectUrl : step.outlineUrl}
-          alt={showOriginal ? '원본' : '도안'}
-          className="w-full h-full object-contain select-none"
-          draggable={false}
-        />
-        {!isUpload && (
-          <span className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded-full">
-            {showOriginal ? '원본' : '결과'} (꾹 누르면 원본 보기)
-          </span>
-        )}
-      </div>
-
-      {showDetailSlider && (
-        <div className="w-full flex flex-col gap-1">
-          <label className="text-sm text-app-text/70">디테일 (현재: {detail})</label>
-          <input
-            type="range"
-            min={20}
-            max={180}
-            step={10}
-            value={detail}
-            onChange={(e) => setDetail(parseInt(e.target.value, 10))}
-            className="w-full"
+    <div className="flex-1 mt-6 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-6 items-start">
+      {/* 좌측: 이미지 + 컨트롤 */}
+      <div className="flex flex-col items-stretch gap-4 min-w-0">
+        <div
+          className="relative bg-white rounded-canvas p-3 shadow-chunky-soft mx-auto max-w-full w-full"
+          style={{ aspectRatio: photoAspect, maxHeight: '70vh' }}
+          onPointerDown={() => !isUpload && setShowOriginal(true)}
+          onPointerUp={() => setShowOriginal(false)}
+          onPointerLeave={() => setShowOriginal(false)}
+        >
+          <img
+            src={showOriginal && !isUpload ? step.photoObjectUrl : step.outlineUrl}
+            alt={showOriginal ? '원본' : '도안'}
+            className="w-full h-full object-contain select-none rounded-[22px]"
+            draggable={false}
           />
+          {!isUpload && (
+            <span className="absolute bottom-4 right-4 bg-kid-ink/85 text-white text-xs font-bold px-3 py-1.5 rounded-full font-hand">
+              {showOriginal ? '원본' : '결과'} · 꾹 누르면 원본
+            </span>
+          )}
         </div>
-      )}
 
-      {!isUpload && (
-        <p className="text-sm text-app-text/60 text-center px-4">
-          ⚠️ 사진 종류에 따라 결과가 다릅니다. 별로면 다른 사진으로 시도해 보세요.
-        </p>
-      )}
+        {showDetailSlider && (
+          <div className="bg-peach rounded-chunky px-5 py-4 flex flex-col gap-2">
+            <label className="font-display font-bold text-kid-ink text-sm flex items-center justify-between">
+              <span>디테일</span>
+              <span className="font-hand text-kid-orange-deep text-base">{detail}</span>
+            </label>
+            <input
+              type="range"
+              min={20}
+              max={180}
+              step={10}
+              value={detail}
+              onChange={(e) => setDetail(parseInt(e.target.value, 10))}
+              className="w-full accent-kid-orange"
+            />
+          </div>
+        )}
 
-      <div className="flex gap-2 flex-wrap justify-center">
         {!isUpload && (
+          <p className="text-xs font-hand text-kid-ink-soft text-center px-2">
+            ⚠️ 사진 종류에 따라 결과가 달라요. 별로면 다른 사진으로 시도해 보세요.
+          </p>
+        )}
+
+        <div className="flex gap-3 justify-center flex-wrap">
+          {!isUpload && (
+            <button
+              type="button"
+              onClick={() => onRetry(detail)}
+              className="kid-chunky-cream px-5 py-3 text-base"
+            >
+              🔄 다시 변환
+            </button>
+          )}
           <button
             type="button"
-            onClick={() => onRetry(detail)}
-            className="kid-btn bg-white px-5 py-2"
+            onClick={onCancel}
+            className="kid-chunky px-5 py-3 text-base bg-[#FFB4A2] text-white shadow-[0_6px_0_#D88A78]"
           >
-            🔄 다시 변환
+            ❌ 다른 사진
           </button>
-        )}
-        <button
-          type="button"
-          onClick={onCancel}
-          className="kid-btn bg-app-danger text-white px-5 py-2"
-        >
-          ❌ 다른 사진
-        </button>
+        </div>
       </div>
 
-      <div className="w-full mt-6 bg-white p-4 rounded-2xl flex flex-col gap-3">
-        <label className="text-sm font-bold">이름 (선택)</label>
+      {/* 우측(가로모드) / 하단(세로모드): 저장 폼 */}
+      <div className="bg-white rounded-chunky shadow-chunky-soft p-5 flex flex-col gap-3 lg:sticky lg:top-5">
+        <label className="font-display font-bold text-kid-ink text-base">
+          이름 <span className="font-hand text-kid-ink-faint text-sm">(선택)</span>
+        </label>
         <input
           type="text"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="예: 우리집 강아지"
           maxLength={20}
-          className="border-2 border-black/10 rounded-xl px-4 py-2 text-base"
+          className="bg-cream border-2 border-peach rounded-2xl px-4 py-3 text-base font-round
+                     focus:outline-none focus:border-kid-orange transition-colors"
         />
-        <label className="text-sm font-bold mt-2">카테고리</label>
+
+        <label className="font-display font-bold text-kid-ink text-base mt-2">
+          카테고리
+        </label>
         <div className="flex gap-2 flex-wrap">
-          {usableCategories.map((c) => (
-            <button
-              key={c.id}
-              type="button"
-              onClick={() => setCategoryId(c.id === categoryId ? null : c.id)}
-              className={clsx(
-                'px-3 py-2 rounded-full text-sm font-bold transition',
-                c.id === categoryId
-                  ? 'bg-app-orange text-white'
-                  : 'bg-app-bg ring-2 ring-black/10',
-              )}
-            >
-              {c.icon_emoji ?? '🎨'} {c.name}
-            </button>
-          ))}
+          {usableCategories.map((c) => {
+            const active = c.id === categoryId;
+            return (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => setCategoryId(active ? null : c.id)}
+                className={clsx(
+                  'px-4 py-2.5 rounded-full font-display font-bold text-sm transition-all',
+                  active
+                    ? 'bg-kid-orange text-white shadow-chunky-orange'
+                    : 'bg-cream text-kid-ink shadow-chunky',
+                )}
+              >
+                {c.icon_emoji ?? '🎨'} {c.name}
+              </button>
+            );
+          })}
         </div>
+
         <button
           type="button"
           onClick={() => onSave(title, categoryId)}
           disabled={!categoryId}
-          className="kid-btn bg-app-orange text-white py-3 mt-2 disabled:opacity-30"
+          className="kid-chunky-orange w-full py-4 text-lg mt-3
+                     disabled:bg-kid-ink-faint disabled:shadow-none disabled:opacity-50
+                     disabled:active:translate-y-0"
         >
           💾 도안으로 저장
         </button>
@@ -549,9 +671,11 @@ function ResultStep({
 
 function SavingStep() {
   return (
-    <div className="mt-16 grid place-items-center text-center">
-      <div className="text-7xl animate-pulse">💾</div>
-      <p className="text-kid-body mt-6">저장 중...</p>
+    <div className="flex-1 grid place-items-center text-center">
+      <div className="text-7xl animate-bounce">💾</div>
+      <p className="mt-6 font-display font-extrabold text-2xl text-kid-orange-deep">
+        저장 중...
+      </p>
     </div>
   );
 }
