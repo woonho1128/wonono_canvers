@@ -282,6 +282,12 @@ function ResultStep({
   const [title, setTitle] = useState('');
   const [categoryId, setCategoryId] = useState<string | null>(null);
 
+  // 원본 이미지 비율을 그대로 컨테이너에 적용 → 세로/가로 사진 모두 자연스럽게
+  const photoAspect =
+    step.photo.naturalWidth && step.photo.naturalHeight
+      ? step.photo.naturalWidth / step.photo.naturalHeight
+      : 1;
+
   // 사용자 도안만 보이는 카테고리 후보 (전체 + "내 도안")
   const usableCategories = categories.filter((c) => c.name !== '내 도안').concat(
     categories.filter((c) => c.name === '내 도안'),
@@ -290,7 +296,8 @@ function ResultStep({
   return (
     <div className="mt-6 max-w-2xl mx-auto flex flex-col items-center gap-4">
       <div
-        className="relative w-full max-h-[60vh] bg-white rounded-2xl shadow overflow-hidden grid place-items-center"
+        className="relative bg-white rounded-2xl shadow overflow-hidden grid place-items-center max-h-[65vh] max-w-full"
+        style={{ aspectRatio: photoAspect }}
         onPointerDown={() => setShowOriginal(true)}
         onPointerUp={() => setShowOriginal(false)}
         onPointerLeave={() => setShowOriginal(false)}
@@ -298,7 +305,7 @@ function ResultStep({
         <img
           src={showOriginal ? step.photoObjectUrl : step.outlineUrl}
           alt={showOriginal ? '원본' : '결과'}
-          className="max-h-[60vh] max-w-full object-contain select-none"
+          className="w-full h-full object-contain select-none"
           draggable={false}
         />
         <span className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded-full">
