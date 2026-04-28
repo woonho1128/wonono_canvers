@@ -134,18 +134,32 @@ Deno.serve(async (req: Request) => {
     return jsonError('Replicate returned no output URL', 502, origin);
   }
 
-  // 결과 PNG를 그대로 스트리밍 반환 (브라우저가 Blob으로 받음).
+  // 결과 PNG를 base64 data URL로 인코딩해 JSON으로 반환.
+  // (supabase-js invoke()가 바이너리 응답을 Blob으로 안전하게 못 받는 경우가 있어
+  //  JSON 래핑이 가장 호환성 높음.)
   const imgRes = await fetch(outputUrl);
-  if (!imgRes.ok || !imgRes.body) {
+  if (!imgRes.ok) {
     return jsonError(`Failed to fetch output image: ${imgRes.status}`, 502, origin);
   }
+  const buf = new Uint8Array(await imgRes.arrayBuffer());
+  const contentType = imgRes.headers.get('Content-Type') ?? 'image/png';
+  const dataUrl = `data:${contentType};base64,${bytesToBase64(buf)}`;
 
-  return new Response(imgRes.body, {
+  return new Response(JSON.stringify({ outline: dataUrl }), {
     status: 200,
     headers: {
       ...corsHeaders(origin),
-      'Content-Type': imgRes.headers.get('Content-Type') ?? 'image/png',
+      'Content-Type': 'application/json',
       'Cache-Control': 'no-store',
     },
   });
 });
+
+function bytesToBase64(bytes: Uint8Array): string {
+  let bin = '';
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    bin += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(bin);
+}
