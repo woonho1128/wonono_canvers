@@ -95,8 +95,7 @@ async function convert(bitmap: ImageBitmap, detail: number): Promise<Blob> {
 
   const src = cv.matFromImageData(imageData);
   const rgb = new cv.Mat();
-  const smooth1 = new cv.Mat();
-  const smooth2 = new cv.Mat();
+  const smooth = new cv.Mat();
   const gray = new cv.Mat();
   const denoised = new cv.Mat();
   const edges = new cv.Mat();
@@ -107,26 +106,25 @@ async function convert(bitmap: ImageBitmap, detail: number): Promise<Blob> {
   let dilateKernel: any = null;
 
   try {
-    // 1) Cartoonize: bilateral filter 2회 패스로 색 영역을 평탄화.
-    //    그라데이션이 단색 면으로 합쳐져, 면 사이의 경계가 강한 엣지로 변함.
-    //    이 과정 없이 adaptive threshold를 쓰면 셰이딩이 텍스처/스티플링으로
-    //    잡혀 도안이 지저분해짐.
+    // 1) 가벼운 cartoonize: bilateral 1회 (d=7, σ=45) — 미세 텍스처는
+    //    부드럽게, 강한 엣지는 보존. 너무 강하게 평탄화하면 부드러운
+    //    실루엣까지 사라지므로 보수적으로.
     cv.cvtColor(src, rgb, cv.COLOR_RGBA2RGB);
-    cv.bilateralFilter(rgb, smooth1, 9, 80, 80);
-    cv.bilateralFilter(smooth1, smooth2, 9, 80, 80);
+    cv.bilateralFilter(rgb, smooth, 7, 45, 45);
 
-    // 2) 그레이스케일 + 미디언 블러로 잔여 잡음 제거
-    cv.cvtColor(smooth2, gray, cv.COLOR_RGB2GRAY);
+    // 2) 그레이스케일 + 미디언 블러로 잔여 점 잡음 제거
+    cv.cvtColor(smooth, gray, cv.COLOR_RGB2GRAY);
     cv.medianBlur(gray, denoised, 3);
 
-    // 3) Canny — 단순화된 이미지에서는 면 사이 경계가 깔끔하게 잡힘
-    //    detail이 클수록 더 약한 엣지까지 캡처 (하한 낮아짐)
-    const t1 = Math.max(25, 100 - detail * 0.45);
-    const t2 = Math.max(70, 200 - detail * 0.7);
+    // 3) Canny — 약한 엣지까지 잡도록 하한을 낮게.
+    //    detail=100 기준 t1≈25, t2≈55 → 부드러운 윤곽도 캡처.
+    //    detail이 높을수록 더 민감하게.
+    const t1 = Math.max(10, 70 - detail * 0.45);
+    const t2 = Math.max(30, 145 - detail * 0.9);
     cv.Canny(denoised, edges, t1, t2);
 
     // 4) 모폴로지: close로 끊김 메우고, dilate로 약한 두께
-    closeKernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(2, 2));
+    closeKernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, new cv.Size(3, 3));
     dilateKernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, new cv.Size(2, 2));
     cv.morphologyEx(edges, closed, cv.MORPH_CLOSE, closeKernel);
     cv.dilate(closed, cleaned, dilateKernel);
@@ -152,8 +150,7 @@ async function convert(bitmap: ImageBitmap, detail: number): Promise<Blob> {
   } finally {
     src.delete();
     rgb.delete();
-    smooth1.delete();
-    smooth2.delete();
+    smooth.delete();
     gray.delete();
     denoised.delete();
     edges.delete();
