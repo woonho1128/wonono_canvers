@@ -27,29 +27,33 @@ async function imageToDataUrl(image: HTMLImageElement | Blob): Promise<string> {
  * Replicate flux-kontext-pro로 도안 변환.
  * 보통 5~20초 소요.
  */
+type FunctionResponse = { outline?: string; error?: string };
+
 export async function convertPhotoToOutlineApi(
   source: HTMLImageElement | Blob,
   prompt?: string,
 ): Promise<Blob> {
   const dataUrl = await imageToDataUrl(source);
 
-  const { data, error } = await supabase.functions.invoke<Blob>(FUNCTION_NAME, {
+  const { data, error } = await supabase.functions.invoke<FunctionResponse>(FUNCTION_NAME, {
     body: { image: dataUrl, prompt },
   });
 
   if (error) {
-    // supabase-js가 에러 응답 본문을 에러에 담아주지 못할 때를 대비
     const detail = (error as unknown as { context?: { responseText?: string } }).context
       ?.responseText;
     throw new Error(detail ? `${error.message}: ${detail}` : error.message);
   }
-  if (!data || !(data instanceof Blob)) {
+  if (!data || typeof data !== 'object') {
     throw new Error('Edge Function이 빈 응답을 반환했습니다.');
   }
-  if (data.type && !data.type.startsWith('image/')) {
-    // 에러를 JSON으로 받았을 가능성 → 텍스트로 읽어서 throw
-    const text = await data.text();
-    throw new Error(text || '변환 실패 (이미지 응답 아님)');
+  if (data.error) {
+    throw new Error(data.error);
   }
-  return data;
+  if (!data.outline || typeof data.outline !== 'string') {
+    throw new Error('변환 결과 이미지가 없습니다.');
+  }
+  // data URL → Blob (호출부가 Blob을 기대)
+  const res = await fetch(data.outline);
+  return await res.blob();
 }
