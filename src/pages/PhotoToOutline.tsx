@@ -290,7 +290,7 @@ function ResultStep({
   return (
     <div className="mt-6 max-w-2xl mx-auto flex flex-col items-center gap-4">
       <div
-        className="relative w-full max-h-[55vh] aspect-square bg-white rounded-2xl shadow overflow-hidden grid place-items-center"
+        className="relative w-full max-h-[60vh] bg-white rounded-2xl shadow overflow-hidden grid place-items-center"
         onPointerDown={() => setShowOriginal(true)}
         onPointerUp={() => setShowOriginal(false)}
         onPointerLeave={() => setShowOriginal(false)}
@@ -298,7 +298,7 @@ function ResultStep({
         <img
           src={showOriginal ? step.photoObjectUrl : step.outlineUrl}
           alt={showOriginal ? '원본' : '결과'}
-          className="max-h-full max-w-full object-contain select-none"
+          className="max-h-[60vh] max-w-full object-contain select-none"
           draggable={false}
         />
         <span className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded-full">

@@ -96,12 +96,17 @@ async function convert(bitmap: ImageBitmap, detail: number): Promise<Blob> {
   const src = cv.matFromImageData(imageData);
   const gray = new cv.Mat();
   const filtered = new cv.Mat();
+  const blurred = new cv.Mat();
   const cannyEdges = new cv.Mat();
-  const adaptiveEdges = new cv.Mat();
+  const adaptiveFine = new cv.Mat();
+  const adaptiveCoarse = new cv.Mat();
+  const adaptiveCombined = new cv.Mat();
   const merged = new cv.Mat();
+  const opened = new cv.Mat();
   const closed = new cv.Mat();
   const cleaned = new cv.Mat();
   const inverted = new cv.Mat();
+  let openKernel: any = null;
   let closeKernel: any = null;
   let dilateKernel: any = null;
 
@@ -109,34 +114,52 @@ async function convert(bitmap: ImageBitmap, detail: number): Promise<Blob> {
     cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
     // 엣지 보존 평탄화 (노이즈는 줄이고 강한 엣지는 유지)
     cv.bilateralFilter(gray, filtered, 7, 35, 35);
+    // adaptive threshold 입력은 약하게 더 평탄화 (작은 텍스처/노이즈 억제)
+    cv.GaussianBlur(filtered, blurred, new cv.Size(3, 3), 0);
 
     // 1) Canny — 선명한 엣지(눈/입/옷 경계, 강한 윤곽선)
     const t1 = Math.max(20, 95 - detail * 0.4);
     const t2 = Math.max(55, 195 - detail * 0.7);
     cv.Canny(filtered, cannyEdges, t1, t2);
 
-    // 2) Adaptive Threshold — 그라데이션 영역의 명암 경계 캡처
-    //    (3D 애니/사진의 부드러운 셰이딩, 털 음영, 실루엣 등 Canny가 놓치는 부분)
-    //    blockSize: 이미지 크기에 비례하는 홀수, C: detail 클수록 더 민감(작게)
-    const blockSize = makeOdd(Math.max(7, Math.round(Math.min(w, h) / 80)));
-    const cParam = Math.max(2, 10 - detail * 0.04);
+    // 2) Adaptive Threshold — 다중 스케일
+    //    - fine: 작은 디테일/얇은 선
+    //    - coarse: 큰 면 경계, 부드러운 그라데이션 실루엣 (3D 애니 털 등)
+    //    GAUSSIAN_C 사용해 더 부드러운 결과
+    const fineBlock = makeOdd(Math.max(7, Math.round(Math.min(w, h) / 80)));
+    const coarseBlock = makeOdd(Math.max(15, Math.round(Math.min(w, h) / 18)));
+    const cFine = Math.max(2, 10 - detail * 0.04);
+    const cCoarse = Math.max(3, 12 - detail * 0.04);
+
     cv.adaptiveThreshold(
-      filtered,
-      adaptiveEdges,
+      blurred,
+      adaptiveFine,
       255,
-      cv.ADAPTIVE_THRESH_MEAN_C,
+      cv.ADAPTIVE_THRESH_GAUSSIAN_C,
       cv.THRESH_BINARY_INV,
-      blockSize,
-      cParam,
+      fineBlock,
+      cFine,
     );
+    cv.adaptiveThreshold(
+      blurred,
+      adaptiveCoarse,
+      255,
+      cv.ADAPTIVE_THRESH_GAUSSIAN_C,
+      cv.THRESH_BINARY_INV,
+      coarseBlock,
+      cCoarse,
+    );
+    cv.bitwise_or(adaptiveFine, adaptiveCoarse, adaptiveCombined);
 
-    // 3) 두 결과를 OR 결합 — Canny의 선명한 엣지 + Adaptive의 면 경계
-    cv.bitwise_or(cannyEdges, adaptiveEdges, merged);
+    // 3) Canny ∪ Adaptive — Canny의 선명한 엣지 + Adaptive 면 경계
+    cv.bitwise_or(cannyEdges, adaptiveCombined, merged);
 
-    // 4) 모폴로지 정리: 작은 끊김 메우고(close) 살짝 두껍게(dilate)
+    // 4) Open으로 작은 점/노이즈 제거 → Close로 끊김 메우기 → Dilate로 약한 두께
+    openKernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(2, 2));
     closeKernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(2, 2));
     dilateKernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, new cv.Size(2, 2));
-    cv.morphologyEx(merged, closed, cv.MORPH_CLOSE, closeKernel);
+    cv.morphologyEx(merged, opened, cv.MORPH_OPEN, openKernel);
+    cv.morphologyEx(opened, closed, cv.MORPH_CLOSE, closeKernel);
     cv.dilate(closed, cleaned, dilateKernel);
 
     // 5) 반전 (엣지=검정, 배경=흰색)
@@ -161,12 +184,17 @@ async function convert(bitmap: ImageBitmap, detail: number): Promise<Blob> {
     src.delete();
     gray.delete();
     filtered.delete();
+    blurred.delete();
     cannyEdges.delete();
-    adaptiveEdges.delete();
+    adaptiveFine.delete();
+    adaptiveCoarse.delete();
+    adaptiveCombined.delete();
     merged.delete();
+    opened.delete();
     closed.delete();
     cleaned.delete();
     inverted.delete();
+    openKernel?.delete();
     closeKernel?.delete();
     dilateKernel?.delete();
   }
