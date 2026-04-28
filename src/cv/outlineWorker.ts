@@ -107,10 +107,10 @@ async function convert(bitmap: ImageBitmap, detail: number): Promise<Blob> {
 
   try {
     cv.cvtColor(subject, gray, cv.COLOR_RGBA2GRAY);
-    cv.bilateralFilter(gray, filtered, 7, 55, 55);
+    cv.bilateralFilter(gray, filtered, 7, 35, 35);
 
-    const t1 = Math.max(40, 130 - detail * 0.45);
-    const t2 = Math.max(95, 260 - detail * 0.75);
+    const t1 = Math.max(20, 95 - detail * 0.4);
+    const t2 = Math.max(55, 195 - detail * 0.7);
     cv.Canny(filtered, edges, t1, t2);
 
     closeKernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(2, 2));
@@ -174,7 +174,9 @@ function isolateSubject(src: any, width: number, height: number): any {
     const maskData = mask.data;
     for (let i = 0, p = 0; i < maskData.length; i += 1, p += 4) {
       const m = maskData[i];
-      if (m === cv.GC_BGD || m === cv.GC_PR_BGD) {
+      // 확실한 배경(GC_BGD)만 흰색 처리. "추정 배경"(GC_PR_BGD)은 보존하여
+      // GrabCut 오분류로 피사체 엣지가 사라지는 것을 방지.
+      if (m === cv.GC_BGD) {
         pixels[p] = 255;
         pixels[p + 1] = 255;
         pixels[p + 2] = 255;
@@ -224,12 +226,16 @@ function suppressBorderBackground(mat: any, width: number, height: number): void
   g /= count;
   b /= count;
 
-  const colorThresholdSq = 205 * 205;
+  // 임계값을 좁게 두어 실제 배경색에 매우 가까운 픽셀만 흰색 처리.
+  // 기존 205²은 너무 넓어 피사체 픽셀까지 지워 엣지 손실의 주범이었음.
+  const colorThresholdSq = 60 * 60;
+  // 어두운 픽셀은 엣지/윤곽 후보로 간주하여 보호 (Y < 90).
   for (let p = 0; p < data.length; p += 4) {
     const dr = data[p] - r;
     const dg = data[p + 1] - g;
     const db = data[p + 2] - b;
-    const isBorderLike = dr * dr + dg * dg + db * db < colorThresholdSq;
+    const luminance = 0.299 * data[p] + 0.587 * data[p + 1] + 0.114 * data[p + 2];
+    const isBorderLike = dr * dr + dg * dg + db * db < colorThresholdSq && luminance >= 90;
 
     if (isBorderLike) {
       data[p] = 255;
