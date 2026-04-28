@@ -17,6 +17,7 @@
     "test:ui": "vitest --ui",
     "check": "npm run typecheck && npm run lint && npm run test",
     "seed:outlines": "node --env-file=.env.local scripts/seed-outlines.mjs",
+    "seed:users": "node --env-file=.env.local scripts/seed-users.mjs",
     "fetch:opencv": "node scripts/fetch-opencv.mjs",
     "build:icons": "node scripts/build-icons.mjs"
   },

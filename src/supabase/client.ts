@@ -11,7 +11,8 @@ if (!url || !anonKey) {
 
 export const supabase = createClient(url, anonKey, {
   auth: {
-    persistSession: false, // 단일 가족, 로그인 없음
-    autoRefreshToken: false,
+    persistSession: true,
+    autoRefreshToken: true,
+    storageKey: 'kidpaint-auth',
   },
 });
