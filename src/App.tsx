@@ -8,6 +8,9 @@ import Gallery from './pages/Gallery';
 import ArtworkDetail from './pages/ArtworkDetail';
 import ParentDashboard from './pages/ParentDashboard';
 import PhotoToOutline from './pages/PhotoToOutline';
+import Login from './pages/Login';
+import { AuthProvider } from './auth/AuthProvider';
+import AuthGate from './components/AuthGate';
 
 function ErrorFallback({ resetErrorBoundary }: { resetErrorBoundary: () => void }) {
   return (
@@ -27,16 +30,19 @@ export default function App() {
   return (
     <ErrorBoundary FallbackComponent={ErrorFallback}>
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/categories" element={<CategorySelect />} />
-          <Route path="/categories/:categoryId" element={<PageGrid />} />
-          <Route path="/color/:pageId" element={<ColoringScreen />} />
-          <Route path="/gallery" element={<Gallery />} />
-          <Route path="/gallery/:artworkId" element={<ArtworkDetail />} />
-          <Route path="/parent" element={<ParentDashboard />} />
-          <Route path="/parent/photo-to-outline" element={<PhotoToOutline />} />
-        </Routes>
+        <AuthProvider>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/" element={<AuthGate><Home /></AuthGate>} />
+            <Route path="/categories" element={<AuthGate><CategorySelect /></AuthGate>} />
+            <Route path="/categories/:categoryId" element={<AuthGate><PageGrid /></AuthGate>} />
+            <Route path="/color/:pageId" element={<AuthGate><ColoringScreen /></AuthGate>} />
+            <Route path="/gallery" element={<AuthGate><Gallery /></AuthGate>} />
+            <Route path="/gallery/:artworkId" element={<AuthGate><ArtworkDetail /></AuthGate>} />
+            <Route path="/parent" element={<AuthGate><ParentDashboard /></AuthGate>} />
+            <Route path="/parent/photo-to-outline" element={<AuthGate><PhotoToOutline /></AuthGate>} />
+          </Routes>
+        </AuthProvider>
       </BrowserRouter>
     </ErrorBoundary>
   );
