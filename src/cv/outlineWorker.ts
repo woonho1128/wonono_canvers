@@ -94,11 +94,11 @@ async function convert(bitmap: ImageBitmap, detail: number): Promise<Blob> {
   const imageData = inCtx.getImageData(0, 0, w, h);
 
   const src = cv.matFromImageData(imageData);
-  const subject = isolateSubject(src, w, h);
-  suppressBorderBackground(subject, w, h);
   const gray = new cv.Mat();
   const filtered = new cv.Mat();
-  const edges = new cv.Mat();
+  const cannyEdges = new cv.Mat();
+  const adaptiveEdges = new cv.Mat();
+  const merged = new cv.Mat();
   const closed = new cv.Mat();
   const cleaned = new cv.Mat();
   const inverted = new cv.Mat();
@@ -106,27 +106,46 @@ async function convert(bitmap: ImageBitmap, detail: number): Promise<Blob> {
   let dilateKernel: any = null;
 
   try {
-    cv.cvtColor(subject, gray, cv.COLOR_RGBA2GRAY);
+    cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+    // 엣지 보존 평탄화 (노이즈는 줄이고 강한 엣지는 유지)
     cv.bilateralFilter(gray, filtered, 7, 35, 35);
 
+    // 1) Canny — 선명한 엣지(눈/입/옷 경계, 강한 윤곽선)
     const t1 = Math.max(20, 95 - detail * 0.4);
     const t2 = Math.max(55, 195 - detail * 0.7);
-    cv.Canny(filtered, edges, t1, t2);
+    cv.Canny(filtered, cannyEdges, t1, t2);
 
+    // 2) Adaptive Threshold — 그라데이션 영역의 명암 경계 캡처
+    //    (3D 애니/사진의 부드러운 셰이딩, 털 음영, 실루엣 등 Canny가 놓치는 부분)
+    //    blockSize: 이미지 크기에 비례하는 홀수, C: detail 클수록 더 민감(작게)
+    const blockSize = makeOdd(Math.max(7, Math.round(Math.min(w, h) / 80)));
+    const cParam = Math.max(2, 10 - detail * 0.04);
+    cv.adaptiveThreshold(
+      filtered,
+      adaptiveEdges,
+      255,
+      cv.ADAPTIVE_THRESH_MEAN_C,
+      cv.THRESH_BINARY_INV,
+      blockSize,
+      cParam,
+    );
+
+    // 3) 두 결과를 OR 결합 — Canny의 선명한 엣지 + Adaptive의 면 경계
+    cv.bitwise_or(cannyEdges, adaptiveEdges, merged);
+
+    // 4) 모폴로지 정리: 작은 끊김 메우고(close) 살짝 두껍게(dilate)
     closeKernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(2, 2));
     dilateKernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, new cv.Size(2, 2));
-    cv.morphologyEx(edges, closed, cv.MORPH_CLOSE, closeKernel);
+    cv.morphologyEx(merged, closed, cv.MORPH_CLOSE, closeKernel);
     cv.dilate(closed, cleaned, dilateKernel);
 
+    // 5) 반전 (엣지=검정, 배경=흰색)
     cv.bitwise_not(cleaned, inverted);
 
-    // OffscreenCanvas로 출력 — cv.imshow가 OffscreenCanvas 호환되지 않을 수 있어
-    // 직접 ImageData로 추출해 OffscreenCanvas에 putImageData
     const out = new OffscreenCanvas(w, h);
     const outCtx = out.getContext('2d');
     if (!outCtx) throw new Error('OffscreenCanvas 2D context unavailable');
 
-    // inverted Mat → RGBA → putImageData
     const outRgba = new cv.Mat();
     cv.cvtColor(inverted, outRgba, cv.COLOR_GRAY2RGBA);
     const outImageData = new ImageData(
@@ -140,10 +159,11 @@ async function convert(bitmap: ImageBitmap, detail: number): Promise<Blob> {
     return await out.convertToBlob({ type: 'image/png' });
   } finally {
     src.delete();
-    subject.delete();
     gray.delete();
     filtered.delete();
-    edges.delete();
+    cannyEdges.delete();
+    adaptiveEdges.delete();
+    merged.delete();
     closed.delete();
     cleaned.delete();
     inverted.delete();
@@ -152,109 +172,8 @@ async function convert(bitmap: ImageBitmap, detail: number): Promise<Blob> {
   }
 }
 
-function isolateSubject(src: any, width: number, height: number): any {
-  const subject = src.clone();
-  if (typeof cv.grabCut !== 'function') return subject;
-
-  const rgb = new cv.Mat();
-  const mask = new cv.Mat();
-  const bgdModel = new cv.Mat();
-  const fgdModel = new cv.Mat();
-
-  try {
-    cv.cvtColor(src, rgb, cv.COLOR_RGBA2RGB);
-
-    const marginX = Math.max(1, Math.round(width * 0.06));
-    const marginY = Math.max(1, Math.round(height * 0.04));
-    const rect = new cv.Rect(marginX, marginY, width - marginX * 2, height - marginY * 2);
-
-    cv.grabCut(rgb, mask, rect, bgdModel, fgdModel, 3, cv.GC_INIT_WITH_RECT);
-
-    const pixels = subject.data;
-    const maskData = mask.data;
-    for (let i = 0, p = 0; i < maskData.length; i += 1, p += 4) {
-      const m = maskData[i];
-      // 확실한 배경(GC_BGD)만 흰색 처리. "추정 배경"(GC_PR_BGD)은 보존하여
-      // GrabCut 오분류로 피사체 엣지가 사라지는 것을 방지.
-      if (m === cv.GC_BGD) {
-        pixels[p] = 255;
-        pixels[p + 1] = 255;
-        pixels[p + 2] = 255;
-        pixels[p + 3] = 255;
-      }
-    }
-
-    return subject;
-  } catch (err) {
-    console.warn('[outline-worker] foreground isolation skipped:', err);
-    return subject;
-  } finally {
-    rgb.delete();
-    mask.delete();
-    bgdModel.delete();
-    fgdModel.delete();
-  }
-}
-
-// 워커 spawn 시점에 백그라운드로 OpenCV 로드 시작 (warm-up)
-function suppressBorderBackground(mat: any, width: number, height: number): void {
-  const data = mat.data as Uint8ClampedArray;
-  const samples: number[] = [];
-  const step = Math.max(1, Math.floor(Math.min(width, height) / 80));
-
-  for (let x = 0; x < width; x += step) {
-    pushPixel(samples, data, x, 0, width);
-    pushPixel(samples, data, x, height - 1, width);
-  }
-  for (let y = 0; y < height; y += step) {
-    pushPixel(samples, data, 0, y, width);
-    pushPixel(samples, data, width - 1, y, width);
-  }
-
-  if (samples.length === 0) return;
-
-  let r = 0;
-  let g = 0;
-  let b = 0;
-  const count = samples.length / 3;
-  for (let i = 0; i < samples.length; i += 3) {
-    r += samples[i];
-    g += samples[i + 1];
-    b += samples[i + 2];
-  }
-  r /= count;
-  g /= count;
-  b /= count;
-
-  // 임계값을 좁게 두어 실제 배경색에 매우 가까운 픽셀만 흰색 처리.
-  // 기존 205²은 너무 넓어 피사체 픽셀까지 지워 엣지 손실의 주범이었음.
-  const colorThresholdSq = 60 * 60;
-  // 어두운 픽셀은 엣지/윤곽 후보로 간주하여 보호 (Y < 90).
-  for (let p = 0; p < data.length; p += 4) {
-    const dr = data[p] - r;
-    const dg = data[p + 1] - g;
-    const db = data[p + 2] - b;
-    const luminance = 0.299 * data[p] + 0.587 * data[p + 1] + 0.114 * data[p + 2];
-    const isBorderLike = dr * dr + dg * dg + db * db < colorThresholdSq && luminance >= 90;
-
-    if (isBorderLike) {
-      data[p] = 255;
-      data[p + 1] = 255;
-      data[p + 2] = 255;
-      data[p + 3] = 255;
-    }
-  }
-}
-
-function pushPixel(
-  samples: number[],
-  data: Uint8ClampedArray,
-  x: number,
-  y: number,
-  width: number,
-): void {
-  const p = (y * width + x) * 4;
-  samples.push(data[p], data[p + 1], data[p + 2]);
+function makeOdd(n: number): number {
+  return n % 2 === 0 ? n + 1 : n;
 }
 
 void loadCV().catch((err) => {
