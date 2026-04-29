@@ -21,7 +21,13 @@ export interface OutlineMaskInfo {
 }
 
 // 마스크 알고리즘이 바뀔 때마다 +1. 캐시 무효화에 사용.
-export const MASK_VERSION = 2;
+// v3: outline blob 자체를 trim된 버전으로 저장. AI 출력의 흰 패딩 문제 해결.
+export const MASK_VERSION = 3;
+
+// trim 시 흰색 판정 임계값. 모든 R/G/B가 이 값 이상이고 alpha도 거의 1이면 "흰 패딩"으로 간주.
+const TRIM_WHITE_THRESHOLD = 250;
+// trim 후 콘텐츠 주변 padding (라인 가장자리 안티앨리어싱 보존용).
+const TRIM_PADDING_PX = 2;
 
 // 이 값보다 어두운 픽셀은 외곽선으로 간주.
 // OpenCV(이진화): 선이 luminance 0이라 임계값 어떤 값이든 OK.
@@ -101,4 +107,80 @@ function drawImageContained(
   const x = (width - drawWidth) / 2;
   const y = (height - drawHeight) / 2;
   ctx.drawImage(image, x, y, drawWidth, drawHeight);
+}
+
+/**
+ * 도안 이미지에서 흰 패딩(알파 0 또는 거의 흰색)을 잘라낸 결과를 새 canvas로 반환.
+ *
+ * AI(Replicate) 변환 도안은 입력 사진과 같은 비율로 출력되지만, 모델이 정사각형
+ * 캔버스에 그림을 채워넣기 위해 위/아래 또는 좌/우에 흰 padding을 넣는 경우가 있다.
+ * 이 padding이 그대로 mask에 들어가면 flood fill이 padding 영역에서 멈추지 않고
+ * 모든 가장자리를 따라 퍼져 "위아래만 칠해지는" 현상이 발생.
+ *
+ * 해결: 외곽선이 있는 영역(bbox)만 잘라내 새 canvas로 만들어 그리기/마스크에 사용.
+ * OpenCV 출력(투명 배경)은 alpha=0이 모두 trim되므로 자연스럽게 작동.
+ */
+export function trimImageWhitespace(
+  image: HTMLImageElement | HTMLCanvasElement | ImageBitmap,
+): HTMLCanvasElement {
+  const w = 'naturalWidth' in image ? image.naturalWidth : image.width;
+  const h = 'naturalHeight' in image ? image.naturalHeight : image.height;
+
+  const tmp = document.createElement('canvas');
+  tmp.width = w;
+  tmp.height = h;
+  const tctx = tmp.getContext('2d', { willReadFrequently: true });
+  if (!tctx) throw new Error('2D context unavailable');
+  tctx.drawImage(image, 0, 0);
+  const data = tctx.getImageData(0, 0, w, h).data;
+
+  // 콘텐츠 픽셀(투명도 있고 흰색 아닌) 의 bbox 찾기
+  let minX = w;
+  let minY = h;
+  let maxX = -1;
+  let maxY = -1;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * 4;
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
+      const a = data[i + 3];
+      const isWhitish =
+        r >= TRIM_WHITE_THRESHOLD &&
+        g >= TRIM_WHITE_THRESHOLD &&
+        b >= TRIM_WHITE_THRESHOLD;
+      if (a > 0 && !isWhitish) {
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+      }
+    }
+  }
+
+  // 콘텐츠가 전혀 없거나 이미 가득 차있으면 원본 그대로 반환
+  if (maxX < 0 || maxY < 0) return tmp;
+  const sx = Math.max(0, minX - TRIM_PADDING_PX);
+  const sy = Math.max(0, minY - TRIM_PADDING_PX);
+  const sw = Math.min(w, maxX + TRIM_PADDING_PX + 1) - sx;
+  const sh = Math.min(h, maxY + TRIM_PADDING_PX + 1) - sy;
+  if (sw === w && sh === h) return tmp;
+
+  const out = document.createElement('canvas');
+  out.width = sw;
+  out.height = sh;
+  const octx = out.getContext('2d');
+  if (!octx) throw new Error('2D context unavailable');
+  octx.drawImage(tmp, -sx, -sy);
+  return out;
+}
+
+/**
+ * Canvas → PNG Blob 헬퍼.
+ */
+export function canvasToPngBlob(canvas: HTMLCanvasElement): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('toBlob 실패'))), 'image/png');
+  });
 }

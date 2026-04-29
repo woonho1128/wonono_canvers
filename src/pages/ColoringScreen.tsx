@@ -9,7 +9,7 @@ import { DEFAULT_BRUSH } from '@/components/brushSizes';
 import { ToolBar } from '@/components/ToolBar';
 import { HoldToConfirm } from '@/components/HoldToConfirm';
 import { CanvasEngine, type EngineState, type Tool } from '@/canvas/CanvasEngine';
-import { MASK_VERSION } from '@/canvas/outlineMask';
+import { MASK_VERSION, canvasToPngBlob, trimImageWhitespace } from '@/canvas/outlineMask';
 import { PointerController } from '@/canvas/pointerController';
 import { useSettingsStore } from '@/store/settingsStore';
 import { getPageById } from '@/supabase/pages';
@@ -65,23 +65,42 @@ function Workspace({ page }: { page: ColoringPage }) {
   const [canvasDims, setCanvasDims] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
   const [outlineAspect, setOutlineAspect] = useState<number | null>(null);
 
-  // 도안 이미지 비율을 미리 알아내서 캔버스 가용공간을 최대로 활용
+  // 도안 이미지 비율을 미리 알아내서 캔버스 가용공간을 최대로 활용.
+  // 캐시 hit 시 trim된 사이즈를 그대로, miss 시엔 원본 로드 후 trim 결과 사이즈 사용.
   useEffect(() => {
     let cancelled = false;
-    const url = publicUrl('outlines', page.outline_path);
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => {
-      if (cancelled) return;
-      if (img.naturalWidth > 0 && img.naturalHeight > 0) {
-        setOutlineAspect(img.naturalWidth / img.naturalHeight);
+    (async () => {
+      try {
+        // 1) 캐시 — 이미 trim된 blob이 들어 있으므로 그 사이즈가 곧 콘텐츠 사이즈
+        const cached = await getCachedPage(page.id).catch(() => undefined);
+        if (cached?.maskVersion === MASK_VERSION) {
+          const url = URL.createObjectURL(cached.outlineBlob);
+          const img = await loadImage(url);
+          URL.revokeObjectURL(url);
+          if (!cancelled && img.naturalWidth > 0 && img.naturalHeight > 0) {
+            setOutlineAspect(img.naturalWidth / img.naturalHeight);
+          }
+          return;
+        }
+        // 2) 캐시 없음/구버전 — 원본 받아 trim 시뮬레이션
+        const res = await fetch(
+          publicUrl('outlines', page.outline_path),
+          import.meta.env.DEV ? { cache: 'reload' } : undefined,
+        );
+        const blob = await res.blob();
+        const img = await loadImage(URL.createObjectURL(blob));
+        const trimmed = trimImageWhitespace(img);
+        if (!cancelled && trimmed.width > 0 && trimmed.height > 0) {
+          setOutlineAspect(trimmed.width / trimmed.height);
+        }
+      } catch {
+        /* aspect 못 구해도 fallback(square)으로 동작 */
       }
-    };
-    img.src = url;
+    })();
     return () => {
       cancelled = true;
     };
-  }, [page.outline_path]);
+  }, [page.id, page.outline_path]);
 
   useEffect(() => {
     const viewport = viewportRef.current;
@@ -185,22 +204,29 @@ function Workspace({ page }: { page: ColoringPage }) {
           height: cached.height,
         });
       } else {
-        // 캐시가 없거나 사이즈/버전이 안 맞으면 새 outlineBlob 받아서 마스크 새로 빌드.
-        // outlineBlob은 캐시에 이미 있어도 다시 받음(소량). 마스크 버전이 바뀐 경우엔 재빌드 필요.
+        // 캐시가 없거나 사이즈/버전이 안 맞으면 원본을 받아 trim 후 마스크 빌드.
+        // trim된 결과를 outlineBlob으로 캐시해서 다음 진입 시 재처리 X.
         const res = await fetch(
           publicUrl('outlines', page.outline_path),
           import.meta.env.DEV ? { cache: 'reload' } : undefined,
         );
-        const blob = await res.blob();
+        const origBlob = await res.blob();
         if (cancelled) return;
-        outlineUrl = URL.createObjectURL(blob);
+        const origUrl = URL.createObjectURL(origBlob);
+        const origImg = await loadImage(origUrl);
+        URL.revokeObjectURL(origUrl);
+        if (cancelled) return;
+        // 흰 패딩 잘라낸 trimmed canvas를 진짜 outline 소스로 사용
+        const trimmedCanvas = trimImageWhitespace(origImg);
+        const trimmedBlob = await canvasToPngBlob(trimmedCanvas);
+        outlineUrl = URL.createObjectURL(trimmedBlob);
         const img = await loadImage(outlineUrl);
         if (cancelled) return;
         engine.drawOutline(img);
         const mask = engine.buildAndSetMask(img);
         void putCachedPage({
           pageId: page.id,
-          outlineBlob: blob,
+          outlineBlob: trimmedBlob,
           maskBytes: mask.bytes.buffer.slice(0) as ArrayBuffer,
           maskVersion: MASK_VERSION,
           width: mask.width,
