@@ -5,7 +5,7 @@ import { AsyncBoundary } from '@/components/AsyncBoundary';
 import { ColorPalette } from '@/components/ColorPalette';
 import { PAINT_COLORS, type PaintColor } from '@/components/paintColors';
 import { BrushSizePicker } from '@/components/BrushSizePicker';
-import { BRUSH_SIZES, type BrushSizeKey } from '@/components/brushSizes';
+import { DEFAULT_BRUSH } from '@/components/brushSizes';
 import { ToolBar } from '@/components/ToolBar';
 import { HoldToConfirm } from '@/components/HoldToConfirm';
 import { CanvasEngine, type EngineState, type Tool } from '@/canvas/CanvasEngine';
@@ -54,14 +54,33 @@ function Workspace({ page }: { page: ColoringPage }) {
 
   const [tool, setTool] = useState<Tool>('brush');
   const [color, setColor] = useState<PaintColor>(PAINT_COLORS[0]);
-  const [brushSize, setBrushSize] = useState<BrushSizeKey>('medium');
+  const [brushSize, setBrushSize] = useState<number>(DEFAULT_BRUSH);
   const [engineState, setEngineState] = useState<EngineState>({
     canUndo: false,
     canRedo: false,
     isDirty: false,
   });
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'error'>('idle');
-  const [canvasSize, setCanvasSize] = useState(0);
+  const [canvasDims, setCanvasDims] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
+  const [outlineAspect, setOutlineAspect] = useState<number | null>(null);
+
+  // 도안 이미지 비율을 미리 알아내서 캔버스 가용공간을 최대로 활용
+  useEffect(() => {
+    let cancelled = false;
+    const url = publicUrl('outlines', page.outline_path);
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      if (cancelled) return;
+      if (img.naturalWidth > 0 && img.naturalHeight > 0) {
+        setOutlineAspect(img.naturalWidth / img.naturalHeight);
+      }
+    };
+    img.src = url;
+    return () => {
+      cancelled = true;
+    };
+  }, [page.outline_path]);
 
   useEffect(() => {
     const viewport = viewportRef.current;
@@ -72,10 +91,35 @@ function Workspace({ page }: { page: ColoringPage }) {
       const style = window.getComputedStyle(viewport);
       const horizontalPadding = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
       const verticalPadding = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
-      const availableWidth = rect.width - horizontalPadding;
-      const availableHeight = rect.height - verticalPadding;
-      const nextSize = Math.floor(Math.min(availableWidth, availableHeight));
-      setCanvasSize((current) => (Math.abs(current - nextSize) > 1 ? nextSize : current));
+      const availableWidth = Math.max(0, rect.width - horizontalPadding);
+      const availableHeight = Math.max(0, rect.height - verticalPadding);
+
+      // outline aspect를 알면 그 비율로 가용공간 최대 사용. 모르면 정사각형 fallback.
+      let w: number;
+      let h: number;
+      if (outlineAspect && outlineAspect > 0) {
+        const viewportAspect = availableWidth / availableHeight;
+        if (outlineAspect >= viewportAspect) {
+          // 도안이 더 넓음 → 가로 꽉 채우고 세로 줄임
+          w = availableWidth;
+          h = w / outlineAspect;
+        } else {
+          // 도안이 더 좁음 → 세로 꽉 채우고 가로 줄임
+          h = availableHeight;
+          w = h * outlineAspect;
+        }
+      } else {
+        const sq = Math.min(availableWidth, availableHeight);
+        w = sq;
+        h = sq;
+      }
+      const nextW = Math.floor(w);
+      const nextH = Math.floor(h);
+      setCanvasDims((cur) =>
+        Math.abs(cur.w - nextW) > 1 || Math.abs(cur.h - nextH) > 1
+          ? { w: nextW, h: nextH }
+          : cur,
+      );
     };
 
     updateSize();
@@ -89,23 +133,23 @@ function Workspace({ page }: { page: ColoringPage }) {
       window.removeEventListener('orientationchange', updateSize);
       window.removeEventListener('resize', updateSize);
     };
-  }, []);
+  }, [outlineAspect]);
 
   // 엔진 셋업 + 외곽선/마스크/draft 로드 + Pointer 컨트롤러
   useEffect(() => {
     const paintCanvas = paintCanvasRef.current;
     const outlineCanvas = outlineCanvasRef.current;
-    if (!paintCanvas || !outlineCanvas || canvasSize <= 0) return;
+    if (!paintCanvas || !outlineCanvas || canvasDims.w <= 0 || canvasDims.h <= 0) return;
 
     const engine = new CanvasEngine({
       paintCanvas,
       outlineCanvas,
-      cssWidth: canvasSize,
-      cssHeight: canvasSize,
+      cssWidth: canvasDims.w,
+      cssHeight: canvasDims.h,
     });
     engineRef.current = engine;
     engine.setColor(color.hex);
-    engine.setBrushSize(BRUSH_SIZES[brushSize]);
+    engine.setBrushSize(brushSize);
     engine.setTool(tool);
 
     const unsubscribe = engine.subscribe(setEngineState);
@@ -179,7 +223,7 @@ function Workspace({ page }: { page: ColoringPage }) {
       pointerRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page.id, canvasSize]);
+  }, [page.id, canvasDims.w, canvasDims.h]);
 
   // 도구/색/굵기/입력 모드 동기화
   useEffect(() => {
@@ -189,7 +233,7 @@ function Workspace({ page }: { page: ColoringPage }) {
     engineRef.current?.setColor(color.hex);
   }, [color.hex]);
   useEffect(() => {
-    engineRef.current?.setBrushSize(BRUSH_SIZES[brushSize]);
+    engineRef.current?.setBrushSize(brushSize);
   }, [brushSize]);
   useEffect(() => {
     pointerRef.current?.setMode(inputMode);
@@ -298,10 +342,10 @@ function Workspace({ page }: { page: ColoringPage }) {
         onReset={onReset}
       />
 
-      <main ref={viewportRef} className="flex-1 grid place-items-center p-4 min-h-0 overflow-hidden">
+      <main ref={viewportRef} className="flex-1 grid place-items-center p-2 min-h-0 overflow-hidden">
         <div
           className="relative bg-white rounded-2xl shadow-sm overflow-hidden"
-          style={{ width: canvasSize, height: canvasSize }}
+          style={{ width: canvasDims.w, height: canvasDims.h }}
         >
           <canvas
             ref={paintCanvasRef}
@@ -417,8 +461,8 @@ interface FooterProps {
   onToolChange: (t: Tool) => void;
   color: PaintColor;
   onColorChange: (c: PaintColor) => void;
-  brushSize: BrushSizeKey;
-  onBrushSizeChange: (k: BrushSizeKey) => void;
+  brushSize: number;
+  onBrushSizeChange: (px: number) => void;
 }
 
 function Footer({
