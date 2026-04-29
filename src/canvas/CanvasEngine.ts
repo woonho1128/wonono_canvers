@@ -49,6 +49,10 @@ export class CanvasEngine {
   private isStroking = false;
   private lastX = 0;
   private lastY = 0;
+  // 부드러운 곡선용: 직전 segment의 끝점(=직전 midpoint).
+  // 새 segment는 prevMid → control(=lastX,lastY) → newMid 의 quadratic Bezier.
+  private prevMidX = 0;
+  private prevMidY = 0;
 
   private history = new HistoryStack();
   private dirty = false;
@@ -129,6 +133,9 @@ export class CanvasEngine {
     this.isStroking = true;
     this.lastX = point.x;
     this.lastY = point.y;
+    // 첫 segment가 자연스럽게 그 자리에서 시작하도록 prevMid를 시작점으로 초기화
+    this.prevMidX = point.x;
+    this.prevMidY = point.y;
 
     const ctx = this.paintCtx;
     ctx.lineWidth = this.brushSize;
@@ -175,14 +182,19 @@ export class CanvasEngine {
     if (!this.isStroking) return;
     const ctx = this.paintCtx;
 
+    // 새 midpoint = 직전 sample(lastX,lastY)와 현재 sample의 중점.
+    // 이전 segment의 끝점(prevMid) → 컨트롤포인트=직전 sample → 끝점=새 midpoint 로
+    // quadratic Bezier 그리면 곡선이 직전 sample을 부드럽게 통과한다.
     const midX = (this.lastX + point.x) / 2;
     const midY = (this.lastY + point.y) / 2;
 
     ctx.beginPath();
-    ctx.moveTo(this.lastX, this.lastY);
+    ctx.moveTo(this.prevMidX, this.prevMidY);
     ctx.quadraticCurveTo(this.lastX, this.lastY, midX, midY);
     ctx.stroke();
 
+    this.prevMidX = midX;
+    this.prevMidY = midY;
     this.lastX = point.x;
     this.lastY = point.y;
   }
@@ -190,6 +202,13 @@ export class CanvasEngine {
   strokeEnd(): void {
     if (!this.isStroking) return;
     this.isStroking = false;
+
+    // 마지막 sample까지 자연스럽게 닫기: prevMid → 마지막 sample 직선
+    const ctx = this.paintCtx;
+    ctx.beginPath();
+    ctx.moveTo(this.prevMidX, this.prevMidY);
+    ctx.lineTo(this.lastX, this.lastY);
+    ctx.stroke();
 
     // 합성 모드 원복
     this.paintCtx.globalCompositeOperation = 'source-over';

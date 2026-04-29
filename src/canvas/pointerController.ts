@@ -91,7 +91,18 @@ export class PointerController {
   private onPointerMove = (e: PointerEvent) => {
     if (e.pointerType === 'pen') this.penLastSeenAt = Date.now();
     if (e.pointerId !== this.activePointerId) return;
-    this.callbacks.onStrokeMove(this.toPoint(e), e);
+
+    // 빠른 손동작 시 한 frame 안에 다수 sample이 합쳐져 들어오면 부드러움이 깨짐.
+    // getCoalescedEvents()로 중간 sample을 모두 풀어내 stroke 곡선의 정밀도를 올림.
+    const coalesced =
+      typeof e.getCoalescedEvents === 'function' ? e.getCoalescedEvents() : null;
+    if (coalesced && coalesced.length > 1) {
+      for (const sub of coalesced) {
+        this.callbacks.onStrokeMove(this.toPoint(sub), sub);
+      }
+    } else {
+      this.callbacks.onStrokeMove(this.toPoint(e), e);
+    }
   };
 
   private onPointerUp = (e: PointerEvent) => {
