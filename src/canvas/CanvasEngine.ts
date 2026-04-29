@@ -297,7 +297,11 @@ export class CanvasEngine {
     tctx.fillStyle = '#ffffff';
     tctx.fillRect(0, 0, tmp.width, tmp.height);
     tctx.drawImage(this.paintCtx.canvas, 0, 0);
+    // outline에 흰 배경이 있는 경우(AI 변환)에도 색칠 위로 안 덮이도록 multiply 합성.
+    // 투명배경 outline(OpenCV)에는 영향 없음. 검은 선만 색칠 위에 올라옴.
+    tctx.globalCompositeOperation = 'multiply';
     tctx.drawImage(this.outlineCtx.canvas, 0, 0);
+    tctx.globalCompositeOperation = 'source-over';
 
     return new Promise<Blob>((resolve, reject) => {
       tmp.toBlob((blob) => {

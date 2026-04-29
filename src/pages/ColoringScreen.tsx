@@ -310,6 +310,10 @@ function Workspace({ page }: { page: ColoringPage }) {
           <canvas
             ref={outlineCanvasRef}
             className="absolute inset-0 w-full h-full rounded-2xl pointer-events-none"
+            // AI 변환 도안은 흰 배경 + 검은 선이라 그대로 두면 색칠 레이어를 가림.
+            // multiply 합성: 흰색은 투명처럼 작동, 검은 선만 위에 올라옴.
+            // OpenCV(투명배경) 도안에도 영향 없음 (투명 픽셀은 multiply의 영향을 안 받음).
+            style={{ mixBlendMode: 'multiply' }}
           />
         </div>
       </main>
