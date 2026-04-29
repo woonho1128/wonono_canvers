@@ -1,63 +1,31 @@
-import { registerSW } from 'virtual:pwa-register';
-
 /**
- * Service Worker 업데이트 정책 (설계서 10.3)
+ * Service Worker 업데이트 (단순화 버전)
  *
- * - skipWaiting() 호출하지 않음
- * - 그리는 중에는 활성화 금지 (캔버스 상태 유실 방지)
- * - 안전한 시점(홈 진입 등)에 applyUpdateIfSafe() 호출
+ * 이전: 'prompt' 모드 + 수동 applyUpdateIfSafe 호출. 그러나 호출 지점이 없어
+ *       새 SW가 활성화되지 않는 버그가 있었음.
+ * 현재: vite.config.ts 의 registerType: 'autoUpdate' 가 SW 자체에서
+ *       skipWaiting + clientsClaim 처리하므로 본 파일은 호환을 위한 stub.
+ *
+ * `injectRegister: 'auto'` 가 가상 모듈을 자동 등록하므로 별도 register 호출도 불필요.
  */
 
-let pendingUpdate: (() => Promise<void>) | null = null;
-let isDrawing = false;
-const listeners = new Set<(hasUpdate: boolean) => void>();
-
 export function initServiceWorker(): void {
-  if (!('serviceWorker' in navigator)) return;
-
-  const updateSW = registerSW({
-    onNeedRefresh() {
-      // waiting SW가 생겼다 — 즉시 적용 X, 안전한 시점까지 대기
-      pendingUpdate = async () => {
-        await updateSW(true);
-      };
-      notifyListeners(true);
-      tryApplyIfSafe();
-    },
-    onOfflineReady() {
-      // 오프라인 준비 완료 (5세에게는 노출하지 않음)
-    },
-    onRegisterError(err) {
-      console.warn('[SW] register failed:', err);
-    },
-  });
+  // no-op: vite-plugin-pwa autoUpdate 가 등록·갱신을 모두 처리.
 }
 
-export function setIsDrawing(drawing: boolean): void {
-  isDrawing = drawing;
-  if (!drawing) tryApplyIfSafe();
+// 캔버스 상태 손실 방지용 hook 들이 외부에서 import 되어 있을 수 있어 stub 유지.
+export function setIsDrawing(_drawing: boolean): void {
+  // no-op
 }
 
 export function applyUpdateIfSafe(): void {
-  tryApplyIfSafe();
+  // no-op
 }
 
 export function hasPendingUpdate(): boolean {
-  return pendingUpdate !== null;
+  return false;
 }
 
-export function subscribeUpdateStatus(listener: (hasUpdate: boolean) => void): () => void {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
-}
-
-function tryApplyIfSafe(): void {
-  if (!pendingUpdate || isDrawing) return;
-  const apply = pendingUpdate;
-  pendingUpdate = null;
-  void apply();
-}
-
-function notifyListeners(hasUpdate: boolean): void {
-  for (const l of listeners) l(hasUpdate);
+export function subscribeUpdateStatus(_listener: (hasUpdate: boolean) => void): () => void {
+  return () => {};
 }

@@ -14,10 +14,11 @@ export default defineConfig({
     react(),
     tsconfigPaths(),
     VitePWA({
-      // 그리는 중 새 SW가 활성화되어 캔버스 상태가 유실되지 않도록
-      // 'prompt' 모드로 두고, 적용 시점은 앱이 직접 결정한다 (10.3).
-      registerType: 'prompt',
-      injectRegister: false,
+      // autoUpdate: 새 SW가 install 되면 즉시 skipWaiting + clientsClaim.
+      // 캔버스 상태 보존은 IndexedDB draft autosave로 보장.
+      // (이전 'prompt' 모드는 적용 트리거를 호출하지 않아 새 코드가 영원히 대기 상태에 머물던 버그가 있었음.)
+      registerType: 'autoUpdate',
+      injectRegister: 'auto',
       strategies: 'generateSW',
       workbox: {
         // 큰 폰트 파일은 precache에서 제외 (브라우저 자체 캐시에 맡김)
