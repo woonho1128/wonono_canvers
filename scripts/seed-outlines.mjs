@@ -36,8 +36,24 @@ const supabase = createClient(url, key, {
  * @type {Array<{file: string, title: string, category: string | null}>}
  */
 const SEEDS = [
+  // 음식
   { file: 'apple.svg', title: '사과', category: '음식' },
+  { file: 'cake.svg', title: '케이크', category: '음식' },
+  { file: 'pizza.svg', title: '피자', category: '음식' },
+  { file: 'icecream.svg', title: '아이스크림', category: '음식' },
+  // 탈것
   { file: 'balloon.svg', title: '풍선', category: '탈것' },
+  { file: 'car.svg', title: '자동차', category: '탈것' },
+  { file: 'airplane.svg', title: '비행기', category: '탈것' },
+  { file: 'boat.svg', title: '배', category: '탈것' },
+  // 동물
+  { file: 'dog.svg', title: '강아지', category: '동물' },
+  { file: 'cat.svg', title: '고양이', category: '동물' },
+  { file: 'rabbit.svg', title: '토끼', category: '동물' },
+  // 공룡
+  { file: 'trex.svg', title: '티라노', category: '공룡' },
+  { file: 'brachio.svg', title: '브라키오', category: '공룡' },
+  { file: 'triceratops.svg', title: '트리케라톱스', category: '공룡' },
 ];
 
 const ROOT = join(import.meta.dirname, '..');

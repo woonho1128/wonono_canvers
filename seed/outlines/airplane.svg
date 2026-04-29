@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" width="800" height="800">
+  <g fill="none" stroke="#000000" stroke-width="10" stroke-linecap="round" stroke-linejoin="round">
+    <!-- 동체 -->
+    <path d="M 130 400
+             Q 130 360 170 350
+             L 540 320
+             Q 620 320 680 360
+             L 720 400
+             L 680 440
+             Q 620 480 540 480
+             L 170 450
+             Q 130 440 130 400 Z"/>
+    <!-- 조종실 창 -->
+    <path d="M 580 360 Q 620 360 640 380 L 640 420 Q 620 440 580 440"/>
+    <!-- 본체 창들 -->
+    <circle cx="300" cy="400" r="14"/>
+    <circle cx="360" cy="400" r="14"/>
+    <circle cx="420" cy="400" r="14"/>
+    <circle cx="480" cy="400" r="14"/>
+    <!-- 위쪽 날개 -->
+    <path d="M 320 380 L 280 220 L 380 220 L 420 360"/>
+    <!-- 아래쪽 날개 -->
+    <path d="M 320 420 L 280 580 L 380 580 L 420 440"/>
+    <!-- 꼬리 날개 -->
+    <path d="M 130 400 L 80 320 L 150 320 L 170 380"/>
+    <path d="M 130 400 L 80 480 L 150 480 L 170 420"/>
+  </g>
+</svg>

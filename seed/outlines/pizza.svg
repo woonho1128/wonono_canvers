@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" width="800" height="800">
+  <g fill="none" stroke="#000000" stroke-width="10" stroke-linecap="round" stroke-linejoin="round">
+    <!-- 피자 한 조각 (삼각형) -->
+    <path d="M 400 130
+             L 700 650
+             Q 700 670 680 670
+             L 120 670
+             Q 100 670 100 650 Z"/>
+    <!-- 크러스트(테두리) -->
+    <path d="M 100 650
+             Q 60 670 100 700
+             Q 400 740 700 700
+             Q 740 670 700 650"/>
+    <!-- 크러스트와 본체 사이 곡선 -->
+    <path d="M 120 660 Q 400 690 680 660"/>
+    <!-- 토핑 1 (페퍼로니) -->
+    <circle cx="350" cy="350" r="40"/>
+    <!-- 토핑 2 -->
+    <circle cx="500" cy="430" r="35"/>
+    <!-- 토핑 3 -->
+    <circle cx="280" cy="500" r="38"/>
+    <!-- 토핑 4 -->
+    <circle cx="450" cy="570" r="32"/>
+    <!-- 작은 점들 (치즈 구멍) -->
+    <circle cx="420" cy="280" r="8"/>
+    <circle cx="380" cy="450" r="8"/>
+    <circle cx="560" cy="540" r="8"/>
+    <circle cx="200" cy="600" r="8"/>
+    <circle cx="600" cy="610" r="8"/>
+  </g>
+</svg>

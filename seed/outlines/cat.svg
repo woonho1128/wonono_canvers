@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" width="800" height="800">
+  <g fill="none" stroke="#000000" stroke-width="10" stroke-linecap="round" stroke-linejoin="round">
+    <!-- 머리 -->
+    <path d="M 200 480
+             Q 200 280 400 280
+             Q 600 280 600 480
+             Q 600 660 400 660
+             Q 200 660 200 480 Z"/>
+    <!-- 왼쪽 귀 -->
+    <path d="M 230 320 L 200 160 L 340 280 Z"/>
+    <!-- 오른쪽 귀 -->
+    <path d="M 570 320 L 600 160 L 460 280 Z"/>
+    <!-- 왼쪽 눈 -->
+    <ellipse cx="310" cy="450" rx="20" ry="35"/>
+    <!-- 오른쪽 눈 -->
+    <ellipse cx="490" cy="450" rx="20" ry="35"/>
+    <!-- 코 -->
+    <path d="M 380 510 L 420 510 L 400 540 Z"/>
+    <!-- 입 -->
+    <path d="M 400 540 Q 400 580 370 580"/>
+    <path d="M 400 540 Q 400 580 430 580"/>
+    <!-- 왼쪽 수염 -->
+    <path d="M 270 540 L 180 520"/>
+    <path d="M 270 560 L 180 580"/>
+    <!-- 오른쪽 수염 -->
+    <path d="M 530 540 L 620 520"/>
+    <path d="M 530 560 L 620 580"/>
+  </g>
+</svg>
