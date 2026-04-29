@@ -21,13 +21,17 @@ export interface OutlineMaskInfo {
 }
 
 // 마스크 알고리즘이 바뀔 때마다 +1. 캐시 무효화에 사용.
-// v3: outline blob 자체를 trim된 버전으로 저장. AI 출력의 흰 패딩 문제 해결.
-export const MASK_VERSION = 3;
+// v4: trim 알고리즘을 density 기반(노이즈 robust)으로 변경.
+export const MASK_VERSION = 4;
 
-// trim 시 흰색 판정 임계값. 모든 R/G/B가 이 값 이상이고 alpha도 거의 1이면 "흰 패딩"으로 간주.
-const TRIM_WHITE_THRESHOLD = 250;
+// trim 시 "콘텐츠 픽셀" 판정: R/G/B 어느 하나라도 이 값 미만이면 콘텐츠로 간주.
+// AI 출력의 압축 노이즈/회색조 라인까지 잡되 흰 배경(보통 R/G/B≥250)은 제외.
+const TRIM_CONTENT_DARKNESS = 235;
 // trim 후 콘텐츠 주변 padding (라인 가장자리 안티앨리어싱 보존용).
 const TRIM_PADDING_PX = 2;
+// 행/열을 "콘텐츠 행/열"로 간주하는 최소 콘텐츠 픽셀 비율(전체 너비/높이의 %).
+// 0.5% 미만의 콘텐츠는 노이즈로 보고 trim 대상에 포함.
+const TRIM_ROW_DENSITY_THRESHOLD = 0.005;
 
 // 이 값보다 어두운 픽셀은 외곽선으로 간주.
 // OpenCV(이진화): 선이 luminance 0이라 임계값 어떤 값이든 OK.
@@ -134,11 +138,10 @@ export function trimImageWhitespace(
   tctx.drawImage(image, 0, 0);
   const data = tctx.getImageData(0, 0, w, h).data;
 
-  // 콘텐츠 픽셀(투명도 있고 흰색 아닌) 의 bbox 찾기
-  let minX = w;
-  let minY = h;
-  let maxX = -1;
-  let maxY = -1;
+  // 행/열별로 "콘텐츠 픽셀(어두운 라인 픽셀)" 개수 누적.
+  // 단일 노이즈 픽셀에 영향받지 않게 밀도 기반으로 trim.
+  const rowCount = new Int32Array(h);
+  const colCount = new Int32Array(w);
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       const i = (y * w + x) * 4;
@@ -146,26 +149,46 @@ export function trimImageWhitespace(
       const g = data[i + 1];
       const b = data[i + 2];
       const a = data[i + 3];
-      const isWhitish =
-        r >= TRIM_WHITE_THRESHOLD &&
-        g >= TRIM_WHITE_THRESHOLD &&
-        b >= TRIM_WHITE_THRESHOLD;
-      if (a > 0 && !isWhitish) {
-        if (x < minX) minX = x;
-        if (x > maxX) maxX = x;
-        if (y < minY) minY = y;
-        if (y > maxY) maxY = y;
+      const isContent =
+        a > 64 &&
+        (r < TRIM_CONTENT_DARKNESS ||
+          g < TRIM_CONTENT_DARKNESS ||
+          b < TRIM_CONTENT_DARKNESS);
+      if (isContent) {
+        rowCount[y]++;
+        colCount[x]++;
       }
     }
   }
 
-  // 콘텐츠가 전혀 없거나 이미 가득 차있으면 원본 그대로 반환
+  // 콘텐츠 행/열로 인정되려면 전체 너비/높이의 일정 비율 이상의 콘텐츠 픽셀이 있어야 함.
+  const rowMin = Math.max(2, Math.floor(w * TRIM_ROW_DENSITY_THRESHOLD));
+  const colMin = Math.max(2, Math.floor(h * TRIM_ROW_DENSITY_THRESHOLD));
+
+  let minY = -1;
+  let maxY = -1;
+  for (let y = 0; y < h; y++) {
+    if (rowCount[y] >= rowMin) {
+      if (minY < 0) minY = y;
+      maxY = y;
+    }
+  }
+  let minX = -1;
+  let maxX = -1;
+  for (let x = 0; x < w; x++) {
+    if (colCount[x] >= colMin) {
+      if (minX < 0) minX = x;
+      maxX = x;
+    }
+  }
+
+  // 콘텐츠가 전혀 없거나 이미 거의 가득 차있으면 원본 그대로 반환
   if (maxX < 0 || maxY < 0) return tmp;
   const sx = Math.max(0, minX - TRIM_PADDING_PX);
   const sy = Math.max(0, minY - TRIM_PADDING_PX);
   const sw = Math.min(w, maxX + TRIM_PADDING_PX + 1) - sx;
   const sh = Math.min(h, maxY + TRIM_PADDING_PX + 1) - sy;
-  if (sw === w && sh === h) return tmp;
+  if (sw >= w - TRIM_PADDING_PX * 2 && sh >= h - TRIM_PADDING_PX * 2) return tmp;
 
   const out = document.createElement('canvas');
   out.width = sw;

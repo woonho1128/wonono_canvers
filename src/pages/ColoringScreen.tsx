@@ -218,6 +218,18 @@ function Workspace({ page }: { page: ColoringPage }) {
         if (cancelled) return;
         // 흰 패딩 잘라낸 trimmed canvas를 진짜 outline 소스로 사용
         const trimmedCanvas = trimImageWhitespace(origImg);
+        if (
+          trimmedCanvas.width !== origImg.naturalWidth ||
+          trimmedCanvas.height !== origImg.naturalHeight
+        ) {
+          console.info(
+            `[outline] trim: ${origImg.naturalWidth}x${origImg.naturalHeight} → ${trimmedCanvas.width}x${trimmedCanvas.height}`,
+          );
+        } else {
+          console.info(
+            `[outline] no trim (content fills image): ${origImg.naturalWidth}x${origImg.naturalHeight}`,
+          );
+        }
         const trimmedBlob = await canvasToPngBlob(trimmedCanvas);
         outlineUrl = URL.createObjectURL(trimmedBlob);
         const img = await loadImage(outlineUrl);
