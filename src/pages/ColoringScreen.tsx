@@ -9,6 +9,7 @@ import { DEFAULT_BRUSH } from '@/components/brushSizes';
 import { ToolBar } from '@/components/ToolBar';
 import { HoldToConfirm } from '@/components/HoldToConfirm';
 import { CanvasEngine, type EngineState, type Tool } from '@/canvas/CanvasEngine';
+import { MASK_VERSION } from '@/canvas/outlineMask';
 import { PointerController } from '@/canvas/pointerController';
 import { useSettingsStore } from '@/store/settingsStore';
 import { getPageById } from '@/supabase/pages';
@@ -171,8 +172,9 @@ function Workspace({ page }: { page: ColoringPage }) {
       const cached = await getCachedPage(page.id).catch(() => undefined);
       const sizeMatches =
         cached && cached.width === engine.internalWidth && cached.height === engine.internalHeight;
+      const versionMatches = cached?.maskVersion === MASK_VERSION;
 
-      if (cached && sizeMatches) {
+      if (cached && sizeMatches && versionMatches) {
         outlineUrl = URL.createObjectURL(cached.outlineBlob);
         const img = await loadImage(outlineUrl);
         if (cancelled) return;
@@ -183,6 +185,8 @@ function Workspace({ page }: { page: ColoringPage }) {
           height: cached.height,
         });
       } else {
+        // 캐시가 없거나 사이즈/버전이 안 맞으면 새 outlineBlob 받아서 마스크 새로 빌드.
+        // outlineBlob은 캐시에 이미 있어도 다시 받음(소량). 마스크 버전이 바뀐 경우엔 재빌드 필요.
         const res = await fetch(
           publicUrl('outlines', page.outline_path),
           import.meta.env.DEV ? { cache: 'reload' } : undefined,
@@ -198,6 +202,7 @@ function Workspace({ page }: { page: ColoringPage }) {
           pageId: page.id,
           outlineBlob: blob,
           maskBytes: mask.bytes.buffer.slice(0) as ArrayBuffer,
+          maskVersion: MASK_VERSION,
           width: mask.width,
           height: mask.height,
           cachedAt: Date.now(),

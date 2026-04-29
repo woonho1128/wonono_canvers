@@ -20,6 +20,7 @@ export interface PageCacheRecord {
   pageId: string;
   outlineBlob: Blob;
   maskBytes: ArrayBuffer; // Uint8Array.buffer
+  maskVersion?: number; // outlineMask 알고리즘 버전. 다르면 캐시 무효.
   width: number;
   height: number;
   cachedAt: number;
