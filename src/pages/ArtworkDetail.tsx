@@ -48,6 +48,11 @@ function Body({ artwork }: { artwork: { id: string; image_path: string; thumbnai
     }
   };
 
+  const onPrint = () => {
+    // 다음 frame에서 print() 호출 — 클릭 시각 효과/스타일이 먼저 반영되도록
+    requestAnimationFrame(() => window.print());
+  };
+
   return (
     <>
       <header className="h-touch-lg shrink-0 flex items-center px-2 gap-1 border-b border-black/10">
@@ -55,6 +60,14 @@ function Body({ artwork }: { artwork: { id: string; image_path: string; thumbnai
           ⬅️
         </Link>
         <div className="flex-1" />
+        <button
+          type="button"
+          onClick={onPrint}
+          className="kid-btn bg-white px-4 inline-flex items-center"
+          aria-label="인쇄"
+        >
+          🖨️
+        </button>
         <a
           href={src}
           download
@@ -73,7 +86,7 @@ function Body({ artwork }: { artwork: { id: string; image_path: string; thumbnai
         </HoldToConfirm>
       </header>
 
-      <main className="flex-1 grid place-items-center p-4 min-h-0">
+      <main className="flex-1 grid place-items-center p-4 min-h-0 print-target">
         <img
           src={src}
           alt="내 그림"

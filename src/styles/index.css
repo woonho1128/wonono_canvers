@@ -101,3 +101,38 @@
     box-shadow: 0 2px 6px rgba(74, 53, 37, 0.25);
   }
 }
+
+/* ─── 인쇄 (print) ─── */
+@media print {
+  /* 모든 UI 숨기고 print-target만 보이게 */
+  body * {
+    visibility: hidden;
+  }
+  .print-target,
+  .print-target * {
+    visibility: visible;
+  }
+  .print-target {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: white;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+  }
+  .print-target img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+  }
+  /* 페이지 여백 최소화 */
+  @page {
+    margin: 10mm;
+  }
+}
